@@ -11,572 +11,706 @@
             theme: {
                 extend: {
                     colors: {
-                        'primary-blue': '#0A7AF3', // Vibrant primary blue
-                        'secondary-green': '#4CAF50', // Standard green for success/actions
-                        'fiji-gold': '#FFD700', // A touch of Fiji gold
-                        'fiji-blue': '#102A43', // Darker blue for text/accents
-                        'fiji-coral': '#F2746A', // Coral for attention/danger
+                        'primary-blue': '#0A2AF5',
+                        'secondary-green': '#00C759',
+                        'fiji-gold': '#FFD700',
+                        'fiji-blue': '#102A4F',
+                        'fiji-coral': '#F27464',
                     },
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    }
                 },
             }
         }
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #F8FAFC;
-        }
-        
-        /* Utility for smooth transitions */
-        .transition-all {
-            transition: all 0.25s ease-in-out;
+            background-color: #F4F7F9;
         }
 
-        /* Custom scrollbar for aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #e2e8f0;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+        /* Custom styling for the category tabs */
+        .category-tab {
+            @apply px-4 py-2 text-sm md:text-base font-semibold cursor-pointer border-b-2 border-transparent transition duration-200 ease-in-out hover:border-fiji-blue text-gray-700;
         }
 
-        /* Modal overlay styling */
-        .modal-overlay {
+        .category-tab.tab-active {
+            border-bottom: 3px solid #0A2AF5; 
+            color: #0A2AF5;
+            font-weight: 600;
+        }
+
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Custom modal overlay background */
+        .custom-modal-overlay {
             background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
             z-index: 1000;
         }
 
-        /* Custom Alert Styling (replacing alert()) */
-        .custom-alert {
-            z-index: 1050; 
-            animation: fadeIn 0.3s ease-out;
+        /* Loader specific styling */
+        .loader-dot {
+            animation: bounce 1.4s infinite ease-in-out both;
         }
+        .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loader-dot:nth-child(2) { animation-delay: -0.16s; }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            } 40% {
+                transform: scale(1.0);
+            }
         }
+        
     </style>
 </head>
 <body class="min-h-screen">
-    
-    <!-- Main Application Container -->
-    <div id="app" class="p-4 sm:p-6 md:p-8 flex justify-center">
-        <div class="w-full max-w-xl bg-white rounded-xl shadow-2xl overflow-hidden">
-            
-            <!-- Header Section -->
-            <header class="text-center p-6 bg-primary-blue text-white rounded-t-xl">
-                <h1 class="text-4xl font-extrabold">Fiji Local Link</h1>
-                <p class="mt-1 text-sm opacity-80">Connecting essential services in Fiji.</p>
-                <p class="mt-2 text-xs font-semibold">User ID: <span id="user-id-display" class="font-normal opacity-70">Loading...</span></p>
-            </header>
 
-            <!-- Loading Indicator & Error Area -->
-            <div id="loading-indicator" class="text-center p-6 bg-white transition-all">
-                <p class="text-lg font-semibold text-primary-blue">Connecting to Database...</p>
-                <div class="mt-2 flex justify-center items-center">
-                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-blue"></div>
-                </div>
+    <!-- Application Container -->
+    <div id="app" class="max-w-xl mx-auto p-4 md:p-6 space-y-4">
+
+        <!-- Header Card -->
+        <div id="header-card" class="bg-white rounded-xl shadow-lg p-6 text-center card">
+            <h1 class="text-4xl font-extrabold text-primary-blue">Fiji Local Link</h1>
+            <p class="text-sm text-gray-600 mt-1">Connecting essential services in Fiji. (User ID: <span id="user-id-display">Loading...</span>)</p>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-md card">
+            <p class="text-lg font-semibold text-gray-500 mb-4">Connecting to Database...</p>
+            <div class="flex justify-center space-x-2">
+                <div class="loader-dot w-3 h-3 bg-primary-blue rounded-full"></div>
+                <div class="loader-dot w-3 h-3 bg-fiji-coral rounded-full"></div>
+                <div class="loader-dot w-3 h-3 bg-secondary-green rounded-full"></div>
             </div>
+        </div>
 
-            <div id="error-message" class="hidden p-4 text-center bg-fiji-coral/10 border-l-4 border-fiji-coral text-fiji-coral font-medium transition-all">
-                <!-- Dynamic error message content will go here -->
+        <!-- Category Tabs -->
+        <div id="category-tabs" class="hidden bg-white rounded-xl shadow-md p-2 flex justify-around card">
+            <div class="category-tab tab-active" data-category="All">All Services</div>
+            <div class="category-tab" data-category="Trades">Trades</div>
+            <div class="category-tab" data-category="Food">Food</div>
+            <div class="category-tab" data-category="Health">Health</div>
+            <div class="category-tab" data-category="Other">Other</div>
+        </div>
+
+        <!-- Service List Area -->
+        <div id="service-list-area" class="hidden min-h-[50vh]">
+            <div id="service-list" class="space-y-4">
+                <!-- Service cards will be rendered here -->
             </div>
-
-            <!-- Content Area (Hidden until loaded) -->
-            <div id="content-area" class="hidden">
-                
-                <!-- Category Tabs -->
-                <div class="flex border-b border-gray-200">
-                    <button data-category="All" class="tab-button active-tab p-4 text-sm sm:text-base font-semibold text-primary-blue border-b-2 border-primary-blue transition-all flex-1" onclick="app.filterServices('All')">All Services</button>
-                    <button data-category="Trades" class="tab-button p-4 text-sm sm:text-base font-semibold text-gray-500 hover:text-primary-blue transition-all flex-1" onclick="app.filterServices('Trades')">Trades</button>
-                    <button data-category="Food" class="tab-button p-4 text-sm sm:text-base font-semibold text-gray-500 hover:text-primary-blue transition-all flex-1" onclick="app.filterServices('Food')">Food</button>
-                    <button data-category="Health" class="tab-button p-4 text-sm sm:text-base font-semibold text-gray-500 hover:text-primary-blue transition-all flex-1" onclick="app.filterServices('Health')">Health</button>
-                    <button data-category="Other" class="tab-button p-4 text-sm sm:text-base font-semibold text-gray-500 hover:text-primary-blue transition-all flex-1" onclick="app.filterServices('Other')">Other</button>
-                </div>
-                
-                <!-- Services List -->
-                <div id="service-list" class="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                    <!-- Services will be injected here -->
-                    <p id="no-services" class="text-center text-gray-500 hidden pt-4">No services found in this category. Be the first to list a service!</p>
-                </div>
-
-                <!-- Add Service Button (Floating Action Button) -->
-                <button id="add-service-btn" class="fixed bottom-6 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-secondary-green hover:bg-green-600 text-white rounded-full shadow-lg transition-all transform hover:scale-105 focus:outline-none" onclick="app.showModal('service-modal')" aria-label="Add New Service">
-                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
-                </button>
+             <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center p-8 bg-white rounded-xl shadow-md card">
+                <p class="text-xl font-bold text-gray-600">No services found in this category.</p>
+                <p class="text-md text-gray-500 mt-2">Be the first to list a service!</p>
             </div>
+        </div>
+        
+    </div>
 
+    <!-- Floating Action Button (FAB) -->
+    <button id="fab" class="fixed bottom-6 right-6 w-14 h-14 bg-secondary-green text-white rounded-full shadow-xl hover:bg-green-600 transition-transform duration-200 transform hover:scale-105" onclick="app.showModal('serviceModal')">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+    </button>
+
+    <!-- Modal for Listing a New Service -->
+    <div id="serviceModal" class="custom-modal-overlay fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all duration-300 scale-95 opacity-0">
+            <h2 class="text-2xl font-bold mb-4 text-primary-blue">List a New Service</h2>
+            <form id="service-form" onsubmit="app.submitService(event)">
+
+                <!-- Service Name -->
+                <div class="mb-4">
+                    <label for="service-name" class="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+                    <input type="text" id="service-name" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                </div>
+
+                <!-- Category -->
+                <div class="mb-4">
+                    <label for="service-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select id="service-category" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                        <option value="" disabled selected>Select a Category</option>
+                        <option value="Trades">Trades</option>
+                        <option value="Food">Food</option>
+                        <option value="Health">Health</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Location -->
+                <div class="mb-4">
+                    <label for="service-location" class="block text-sm font-medium text-gray-700 mb-1">Location (e.g., Suva, Lautoka, Nadi)</label>
+                    <input type="text" id="service-location" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="service-description" class="block text-sm font-medium text-gray-700 mb-1">Description / Contact Info</label>
+                    <textarea id="service-description" rows="3" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue"></textarea>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition" onclick="app.closeModal('serviceModal')">Cancel</button>
+                    <button type="submit" id="submit-button" class="px-4 py-2 bg-secondary-green text-white font-semibold rounded-lg hover:bg-green-600 transition">
+                        <span id="submission-text">Submit Service</span>
+                        <div id="submission-loader" class="hidden flex justify-center items-center">
+                            <div class="loader-dot w-2 h-2 bg-white rounded-full mx-0.5"></div>
+                            <div class="loader-dot w-2 h-2 bg-white rounded-full mx-0.5"></div>
+                            <div class="loader-dot w-2 h-2 bg-white rounded-full mx-0.5"></div>
+                        </div>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Service Submission Modal -->
-    <div id="service-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100 duration-300">
-            <div class="p-6">
-                <h3 class="text-2xl font-bold text-primary-blue border-b pb-3 mb-4">List a New Service</h3>
-                <form id="submission-form">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="service-name" class="block text-sm font-medium text-gray-700">Service Name/Business</label>
-                            <input type="text" id="service-name" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-secondary-green focus:border-secondary-green">
-                        </div>
-                        <div>
-                            <label for="service-category" class="block text-sm font-medium text-gray-700">Category</label>
-                            <select id="service-category" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-secondary-green focus:border-secondary-green">
-                                <option value="" disabled selected>Select a category</option>
-                                <option value="Trades">Trades</option>
-                                <option value="Food">Food</option>
-                                <option value="Health">Health</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="service-contact" class="block text-sm font-medium text-gray-700">Contact (Phone or Email)</label>
-                            <input type="text" id="service-contact" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-secondary-green focus:border-secondary-green">
-                        </div>
-                        <div>
-                            <label for="service-description" class="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea id="service-description" rows="3" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-secondary-green focus:border-secondary-green"></textarea>
-                        </div>
-                        <div>
-                            <label for="service-location" class="block text-sm font-medium text-gray-700">Location (Town, Area, or Island)</label>
-                            <input type="text" id="service-location" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-secondary-green focus:border-secondary-green">
-                        </div>
-                    </div>
-                    
-                    <div class="mt-6 flex justify-end space-x-3">
-                        <button type="button" class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all" onclick="app.closeModal('service-modal')">Cancel</button>
-                        <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-secondary-green hover:bg-green-600 transition-all">Submit Service</button>
-                    </div>
-                </form>
+    <!-- Custom Alert/Confirmation Modal -->
+    <div id="customAlert" class="custom-modal-overlay fixed inset-0 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all duration-300 scale-95 opacity-0">
+            <h3 id="alert-title" class="text-xl font-bold mb-2 text-primary-blue">Alert</h3>
+            <p id="alert-message" class="text-gray-700 mb-6">This is a custom alert message.</p>
+            <div id="alert-actions" class="flex justify-end space-x-3">
+                <!-- Buttons injected by app.customAlert() -->
             </div>
         </div>
     </div>
 
-    <!-- Custom Alert/Error/Confirmation Modal -->
-    <div id="custom-alert" class="hidden fixed inset-0 flex items-center justify-center p-4 bg-black bg-opacity-30 custom-alert">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
-            <div class="p-6">
-                <h3 id="alert-title" class="text-xl font-bold text-gray-800 mb-2">Alert</h3>
-                <p id="alert-message" class="text-gray-600 mb-4">This is a custom alert message.</p>
-                <div id="alert-actions" class="flex justify-end space-x-3">
-                    <button id="alert-cancel-button" class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all">Cancel</button>
-                    <button id="alert-confirm-button" class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-primary-blue hover:bg-blue-600 transition-all">OK</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Load Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getFirestore, 
+            collection, 
+            query, 
+            onSnapshot, 
+            doc, 
+            addDoc, 
+            deleteDoc, 
+            updateDoc,
+            serverTimestamp,
+            where,
+            setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // === CRITICAL FIX FOR GITHUB PAGES DEPLOYMENT ===
-        // This is a PLACEHOLDER Firebase configuration. It allows the app to load 
-        // without the "Firebase configuration missing" error.
-        // NOTE: For data persistence, it will use the database connected to the 
-        // environment in which this code is run. For an external host, you would 
-        // replace the values below with your actual Firebase project configuration.
-        const PLACEHOLDER_FIREBASE_CONFIG = {
-            apiKey: "AIzaSy_FIJI_PLACEHOLDER_KEY", 
-            authDomain: "fiji-local-link-placeholder.firebaseapp.com",
-            projectId: "fiji-local-link-placeholder",
-            storageBucket: "fiji-local-link-placeholder.appspot.com",
+        // Set Firebase logging level (optional, but good for debugging)
+        setLogLevel('Debug');
+
+        // --- GLOBAL VARIABLES (Provided by Canvas OR Fallback for GitHub Pages) ---
+        // Fallback Configuration: IMPORTANT for deployment outside of Canvas
+        const FALLBACK_FIREBASE_CONFIG = {
+            // NOTE: Must provide a non-empty string for apiKey for Firebase initialization to pass 
+            apiKey: "AIzaSy_FALLBACK_KEY_000", 
+            authDomain: "local-link-fallback.firebaseapp.com",
+            projectId: "local-link-fallback",
+            storageBucket: "local-link-fallback.appspot.com",
             messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:fiji-placeholder-app-id"
+            appId: "1:123456789012:web:a1b2c3d4e5f6g7h8i9j0"
         };
         
-        // Use the environment variable if available (Canvas environment), otherwise use the placeholder
-        const externalFirebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : PLACEHOLDER_FIREBASE_CONFIG;
-            
-        // Environment variables for auth and app ID
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Initialize Firebase
-        const app = initializeApp(externalFirebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
         
-        // Enable Firebase debug logging
-        setLogLevel('debug');
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined' && __firebase_config.length > 0) {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("Error parsing __firebase_config, falling back:", e);
+                firebaseConfig = FALLBACK_FIREBASE_CONFIG;
+            }
+        } else {
+            console.warn("No __firebase_config found, using fallback configuration.");
+            firebaseConfig = FALLBACK_FIREBASE_CONFIG;
+        }
 
-        // Global app object for interaction
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+        let userId = 'loading';
+        let isAuthReady = false;
+        let unsubscribeServiceListener = null;
+        let currentFilter = 'All';
+
+        // Get DOM elements
+        const elements = {
+            loadingIndicator: document.getElementById('loading-indicator'),
+            serviceListArea: document.getElementById('service-list-area'),
+            serviceList: document.getElementById('service-list'),
+            categoryTabs: document.getElementById('category-tabs'),
+            userIdDisplay: document.getElementById('user-id-display'),
+            emptyState: document.getElementById('empty-state'),
+            serviceModal: document.getElementById('serviceModal'),
+            fab: document.getElementById('fab'),
+            customAlert: document.getElementById('customAlert'),
+            alertTitle: document.getElementById('alert-title'),
+            alertMessage: document.getElementById('alert-message'),
+            alertActions: document.getElementById('alert-actions'),
+            submissionText: document.getElementById('submission-text'),
+            submissionLoader: document.getElementById('submission-loader'),
+            submitButton: document.getElementById('submit-button'),
+        };
+
+        // Initialize App object for global access to methods
         window.app = {
-            db: db,
-            auth: auth,
+            db: null,
+            auth: null,
             userId: null,
-            currentCategory: 'All',
-            services: [], // Stores all services for client-side filtering
-            activeModal: null,
-
-            // --- UI Methods ---
-
-            showElement(id) { document.getElementById(id).classList.remove('hidden'); },
-            hideElement(id) { document.getElementById(id).classList.add('hidden'); },
-            
-            showLoader() {
-                this.showElement('loading-indicator');
-                this.hideElement('content-area');
-                this.hideElement('error-message');
-            },
-
-            hideLoader() {
-                this.hideElement('loading-indicator');
-                this.showElement('content-area');
-            },
-            
-            showError(message) {
-                const errorElement = document.getElementById('error-message');
-                errorElement.innerHTML = `<strong>Error:</strong> ${message}`;
-                this.showElement('error-message');
-                this.hideElement('loading-indicator');
-                this.hideElement('content-area');
-            },
-
-            showModal(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.remove('hidden');
-                    modal.addEventListener('click', this.closeModalOnClickOutside);
-                    this.activeModal = modal;
-                }
-            },
-
-            closeModal(modalId) {
-                const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
-                if (modal) {
-                    modal.classList.add('hidden');
-                    modal.removeEventListener('click', this.closeModalOnClickOutside);
-                    this.activeModal = null;
-                    document.getElementById('submission-form')?.reset(); // Clear form on close
-                }
-            },
-            
-            closeModalOnClickOutside(event) {
-                if (event.target === window.app.activeModal) {
-                    window.app.closeModal(window.app.activeModal);
-                }
-            },
-
-
-            // Custom replacement for window.alert() and window.confirm()
-            customAlert(message, title = "Notification", type = "alert", onConfirm = null) {
-                const alertModal = document.getElementById('custom-alert');
-                const titleElement = document.getElementById('alert-title');
-                const messageElement = document.getElementById('alert-message');
-                const confirmButton = document.getElementById('alert-confirm-button');
-                const cancelButton = document.getElementById('alert-cancel-button');
-                
-                titleElement.textContent = title;
-                messageElement.textContent = message;
-
-                // Clone/replace buttons to safely remove old listeners
-                const confirmClone = confirmButton.cloneNode(true);
-                confirmButton.parentNode.replaceChild(confirmClone, confirmButton);
-                const cancelClone = cancelButton.cloneNode(true);
-                cancelButton.parentNode.replaceChild(cancelClone, cancelButton);
-                
-                const newConfirmButton = document.getElementById('alert-confirm-button');
-                const newCancelButton = document.getElementById('alert-cancel-button');
-
-                if (type === "confirm") {
-                    newCancelButton.classList.remove('hidden');
-                    
-                    newConfirmButton.textContent = "Yes, Delete";
-                    newConfirmButton.classList.remove('bg-primary-blue', 'hover:bg-blue-600');
-                    newConfirmButton.classList.add('bg-fiji-coral', 'hover:bg-red-500');
-
-                    newConfirmButton.addEventListener('click', () => {
-                        window.app.closeModal('custom-alert');
-                        if (onConfirm) onConfirm(true);
-                    }, { once: true });
-
-                    newCancelButton.addEventListener('click', () => {
-                        window.app.closeModal('custom-alert');
-                        if (onConfirm) onConfirm(false); 
-                    }, { once: true });
-
-                } else { 
-                    newCancelButton.classList.add('hidden');
-                    
-                    newConfirmButton.textContent = "Understood";
-                    newConfirmButton.classList.remove('bg-fiji-coral', 'hover:bg-red-500');
-                    newConfirmButton.classList.add('bg-primary-blue', 'hover:bg-blue-600');
-                    
-                    newConfirmButton.addEventListener('click', () => {
-                        window.app.closeModal('custom-alert');
-                        if (onConfirm) onConfirm(true); 
-                    }, { once: true });
-                }
-
-                this.showModal('custom-alert');
-            },
-
-
-            // --- Core App Logic ---
-
-            async initializeApp() {
-                try {
-                    this.showLoader();
-                    
-                    // 1. Authenticate (Anonymously or with custom token)
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    // 2. Auth State Listener & Data Setup
-                    onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            this.userId = user.uid;
-                            document.getElementById('user-id-display').textContent = this.userId.substring(0, 8) + '...';
-                            this.listenForServices();
-                        } else {
-                            this.showError("User authentication failed.");
-                        }
-                    });
-
-                } catch (e) {
-                    console.error("Initialization Error:", e);
-                    // Handle configuration errors gracefully
-                    if (e.code === 'auth/api-key-not-valid' || e.code === 'auth/invalid-api-key') {
-                        this.customAlert("Database configuration is invalid. The app cannot connect.", "Configuration Error");
-                    }
-                    this.showError(`Startup failed: ${e.message}`);
-                }
-            },
-            
-            listenForServices() {
-                const collectionPath = `artifacts/${appId}/public/data/services`;
-                const q = collection(db, collectionPath);
-                
-                // Real-time listener for updates
-                onSnapshot(q, (snapshot) => {
-                    const services = [];
-                    snapshot.forEach((doc) => {
-                        services.push({ id: doc.id, ...doc.data() });
-                    });
-                    
-                    // Client-side sorting (newest first)
-                    services.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
-                    
-                    this.services = services;
-                    this.renderServiceList(services);
-                    this.hideLoader(); // Hide loader after initial data load
-                }, (error) => {
-                    console.error("Firestore Listener Error:", error);
-                    if (error.code === 'permission-denied') {
-                         this.showError("Database Permission Denied. Check security rules.");
-                    } else {
-                        this.showError(`Failed to fetch services: ${error.message}`);
-                    }
+            showModal: showModal,
+            closeModal: closeModal,
+            submitService: submitService,
+            deleteService: deleteService,
+            toggleLike: toggleLike,
+            customAlert: customAlert,
+        };
+        
+        /**
+         * Converts database timestamp to a readable date string.
+         * @param {object} timestamp - Firestore Timestamp object.
+         * @returns {string} Formatted date string.
+         */
+        function formatDate(timestamp) {
+            if (timestamp && timestamp.toDate) {
+                return timestamp.toDate().toLocaleDateString('en-FJ', {
+                    day: 'numeric', month: 'short', year: 'numeric'
                 });
-            },
+            }
+            // For services loaded from the list (which might not have serverTimestamp yet)
+            return new Date().toLocaleDateString('en-FJ', {
+                day: 'numeric', month: 'short', year: 'numeric'
+            });
+        }
 
-            renderServiceList(services) {
-                const listElement = document.getElementById('service-list');
-                const noServicesElement = document.getElementById('no-services');
-                
-                // Filter the services based on the current category
-                const filteredServices = services.filter(service => 
-                    this.currentCategory === 'All' || service.category === this.currentCategory
-                );
-                
-                listElement.innerHTML = '';
-                
-                if (filteredServices.length === 0) {
-                    noServicesElement.classList.remove('hidden');
-                } else {
-                    noServicesElement.classList.add('hidden');
-                    
-                    filteredServices.forEach(service => {
-                        const serviceCard = this.createServiceCard(service);
-                        listElement.appendChild(serviceCard);
-                    });
-                }
-            },
+        /**
+         * Renders the list of services to the DOM.
+         * @param {array} services - Array of service objects from Firestore.
+         */
+        function renderServiceList(services) {
             
-            createServiceCard(service) {
-                const card = document.createElement('div');
-                card.className = 'bg-white border border-gray-200 rounded-xl p-4 shadow-lg hover:shadow-xl transition-all';
+            // 1. Filter the services based on the current category
+            const filteredServices = services.filter(service => {
+                return currentFilter === 'All' || service.category === currentFilter;
+            });
+
+            // 2. Clear the previous list
+            elements.serviceList.innerHTML = '';
+            
+            // 3. Show/Hide Empty State
+            if (filteredServices.length === 0) {
+                elements.emptyState.classList.remove('hidden');
+            } else {
+                elements.emptyState.classList.add('hidden');
+            }
+
+            // 4. Sort the services: Newest first, then by likes
+            filteredServices.sort((a, b) => {
+                const dateA = a.timestamp?.toDate() || new Date(0);
+                const dateB = b.timestamp?.toDate() || new Date(0);
                 
-                const isOwner = service.creatorId === this.userId;
+                // Primary sort: Newest first
+                if (dateA.getTime() !== dateB.getTime()) {
+                    return dateB.getTime() - dateA.getTime();
+                }
+
+                // Secondary sort: More likes first
+                const likesA = a.likedBy?.length || 0;
+                const likesB = b.likedBy?.length || 0;
+                return likesB - likesA;
+            });
+
+            // 5. Render the list
+            filteredServices.forEach(service => {
+                const isOwner = service.ownerId === userId;
+                const isLiked = service.likedBy && service.likedBy.includes(userId);
+                const likeCount = service.likedBy?.length || 0;
                 
-                // Determine a color for the category tag
-                let tagColor = 'bg-primary-blue';
-                if (service.category === 'Food') tagColor = 'bg-fiji-coral';
-                else if (service.category === 'Health') tagColor = 'bg-secondary-green';
-                else if (service.category === 'Trades') tagColor = 'bg-fiji-gold';
-                
-                // Format timestamp
-                const date = service.timestamp ? service.timestamp.toDate().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <h4 class="text-xl font-bold text-fiji-blue">${this.sanitize(service.name)}</h4>
-                        ${isOwner ? 
-                            `<button data-id="${service.id}" class="delete-btn text-fiji-coral hover:text-red-700 transition-all" aria-label="Delete Service">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>` 
-                            : ''}
-                    </div>
-                    
-                    <p class="mt-1 flex items-center space-x-3">
-                        <span class="text-xs font-semibold text-white px-2 py-0.5 rounded-full ${tagColor} shadow-sm">${this.sanitize(service.category)}</span>
-                        <span class="text-xs text-gray-500">${this.sanitize(service.location)}</span>
-                    </p>
-                    
-                    <p class="mt-3 text-gray-600 text-sm">${this.sanitize(service.description)}</p>
-                    
-                    <div class="mt-3 text-sm space-y-1 pt-2 border-t border-gray-100">
-                        <p class="flex items-center text-gray-700 font-medium">
-                            <svg class="w-4 h-4 mr-2 text-secondary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
-                            <a href="tel:${this.sanitize(service.contact)}" class="text-primary-blue hover:underline">${this.sanitize(service.contact)}</a>
-                        </p>
-                        <p class="text-xs text-gray-400">Listed on: ${date}</p>
+                const cardHtml = `
+                    <div id="service-${service.id}" class="bg-white rounded-xl p-4 shadow-md flex flex-col card transition duration-200">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-medium text-white px-2 py-0.5 rounded-full ${isOwner ? 'bg-primary-blue' : 'bg-gray-400'}">
+                                ${isOwner ? 'My Listing' : service.category}
+                            </span>
+                             <div class="flex items-center space-x-2">
+                                ${isOwner ? `
+                                    <button class="text-red-500 hover:text-red-700 transition" 
+                                            onclick="app.deleteService('${service.id}', '${service.name}')" 
+                                            title="Delete Service">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                ` : ''}
+                                <button class="flex items-center space-x-1 p-1 rounded-full ${isLiked ? 'bg-fiji-coral text-white' : 'bg-gray-100 text-gray-500 hover:bg-fiji-coral hover:text-white'} transition" 
+                                        onclick="app.toggleLike('${service.id}', ${isLiked})">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 fill-current" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                    <span class="text-sm font-bold">${likeCount}</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <h3 class="text-2xl font-bold text-fiji-blue mb-1">${service.name}</h3>
+                        <p class="text-sm font-medium text-gray-500 mb-3">${service.location} - Listed: ${formatDate(service.timestamp)}</p>
+                        <p class="text-gray-700 whitespace-pre-wrap">${service.description}</p>
                     </div>
                 `;
+                elements.serviceList.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        /**
+         * Sets up the real-time listener for the services collection.
+         */
+        function setupServiceListener() {
+            // Unsubscribe from any previous listener
+            if (unsubscribeServiceListener) {
+                unsubscribeServiceListener();
+            }
+
+            // Public Collection Path
+            const servicesRef = collection(db, `artifacts/${appId}/public/data/services`);
+            
+            // Build the query
+            let q;
+            if (currentFilter === 'All') {
+                q = query(servicesRef);
+            } else {
+                q = query(servicesRef, where("category", "==", currentFilter));
+            }
+            
+            // Start the real-time listener
+            unsubscribeServiceListener = onSnapshot(q, (snapshot) => {
+                const services = [];
+                snapshot.forEach((doc) => {
+                    services.push({ id: doc.id, ...doc.data() });
+                });
+                renderServiceList(services);
+                // After initial load, hide loading and show content
+                elements.loadingIndicator.classList.add('hidden');
+                elements.serviceListArea.classList.remove('hidden');
+                elements.categoryTabs.classList.remove('hidden');
+                elements.fab.classList.remove('hidden');
+            }, (error) => {
+                console.error("Error fetching services: ", error);
+                customAlert('Error', `Error fetching services: ${error.message}. Please check your connection.`, 'OK');
+            });
+        }
+
+        /**
+         * Handles service submission.
+         * @param {Event} event - The form submission event.
+         */
+        async function submitService(event) {
+            event.preventDefault();
+
+            // Check if user is authenticated
+            if (!auth.currentUser || auth.currentUser.isAnonymous) {
+                 customAlert('Error', 'User is not authenticated. Cannot save service.', 'OK');
+                return;
+            }
+
+            elements.submissionText.classList.add('hidden');
+            elements.submissionLoader.classList.remove('hidden');
+            elements.submitButton.disabled = true;
+
+            const name = document.getElementById('service-name').value.trim();
+            const category = document.getElementById('service-category').value;
+            const location = document.getElementById('service-location').value.trim();
+            const description = document.getElementById('service-description').value.trim();
+            
+            // Only use the first 8 characters of the userId for display/short reference
+            const shortUserId = auth.currentUser.uid.substring(0, 8);
+
+            const newService = {
+                name: name,
+                category: category,
+                location: location,
+                description: description,
+                ownerId: auth.currentUser.uid, 
+                ownerShortId: shortUserId, // Storing a short ID for display
+                timestamp: serverTimestamp(), // Use Firestore server timestamp
+                likedBy: [], // Array of user IDs who liked the service
+            };
+            
+            try {
+                // Public Collection Path for services
+                const servicesRef = collection(db, `artifacts/${appId}/public/data/services`);
+                await addDoc(servicesRef, newService);
                 
-                // Attach event listener for the delete button if the user is the owner
-                if (isOwner) {
-                    const deleteBtn = card.querySelector('.delete-btn');
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.confirmDelete(service.id, service.name);
-                    });
+                customAlert('Success', 'Your service has been listed successfully!', 'OK');
+                closeModal('serviceModal');
+                // Clear the form
+                document.getElementById('service-form').reset();
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                 customAlert('Submission Error', `There was an error saving your service. Please try again. (${e.message})`, 'OK');
+            } finally {
+                elements.submissionText.classList.remove('hidden');
+                elements.submissionLoader.classList.add('hidden');
+                elements.submitButton.disabled = false;
+            }
+        }
+
+        /**
+         * Prompts the user and handles service deletion.
+         * @param {string} serviceId - The ID of the service document to delete.
+         * @param {string} serviceName - The name of the service for display in the alert.
+         */
+        function deleteService(serviceId, serviceName) {
+            customAlert('Confirm Deletion', `Are you sure you want to delete the service: <strong>${serviceName}</strong>? This cannot be undone.`, 'Confirm', () => performDelete(serviceId));
+        }
+
+        /**
+         * Executes the deletion of the service document.
+         * @param {string} serviceId - The ID of the service document to delete.
+         */
+        async function performDelete(serviceId) {
+            // Close the confirmation alert first
+            closeModal('customAlert');
+
+            if (!auth.currentUser) {
+                customAlert('Error', 'Authentication required to delete services.', 'OK');
+                return;
+            }
+
+            try {
+                // Public Collection Path
+                const serviceDocRef = doc(db, `artifacts/${appId}/public/data/services`, serviceId);
+                await deleteDoc(serviceDocRef);
+                customAlert('Deleted', 'Service removed successfully.', 'OK');
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+                customAlert('Error', `Error deleting service: ${e.message}.`, 'OK');
+            }
+        }
+        
+        /**
+         * Toggles the like status for a service.
+         * @param {string} serviceId - The ID of the service document.
+         * @param {boolean} isCurrentlyLiked - True if the current user has already liked it.
+         */
+        async function toggleLike(serviceId, isCurrentlyLiked) {
+             if (!auth.currentUser || auth.currentUser.isAnonymous) {
+                customAlert('Authentication Required', 'Please sign in to like services.', 'OK');
+                return;
+            }
+
+            const serviceRef = doc(db, `artifacts/${appId}/public/data/services`, serviceId);
+            const userIdToUpdate = auth.currentUser.uid;
+            
+            try {
+                let updateData = {};
+                if (isCurrentlyLiked) {
+                    // Unlike: Remove userId from likedBy array
+                    // NOTE: arrayRemove is not available via the CDN module import, so we must load the full data, modify, and save.
+                    const serviceSnap = await getDoc(serviceRef);
+                    if (serviceSnap.exists()) {
+                        const data = serviceSnap.data();
+                        const newLikedBy = (data.likedBy || []).filter(uid => uid !== userIdToUpdate);
+                        updateData = { likedBy: newLikedBy };
+                    }
+                } else {
+                    // Like: Add userId to likedBy array
+                    // NOTE: arrayUnion is not available via the CDN module import, so we must load the full data, modify, and save.
+                    const serviceSnap = await getDoc(serviceRef);
+                    if (serviceSnap.exists()) {
+                        const data = serviceSnap.data();
+                        const newLikedBy = Array.from(new Set([...(data.likedBy || []), userIdToUpdate]));
+                        updateData = { likedBy: newLikedBy };
+                    }
                 }
                 
-                return card;
-            },
-            
-            filterServices(category) {
-                this.currentCategory = category;
-                
-                // Update active tab styling
-                document.querySelectorAll('.tab-button').forEach(btn => {
-                    btn.classList.remove('active-tab', 'text-primary-blue', 'border-primary-blue');
-                    btn.classList.add('text-gray-500', 'hover:text-primary-blue', 'border-transparent');
+                if (Object.keys(updateData).length > 0) {
+                    await updateDoc(serviceRef, updateData);
+                }
+            } catch (error) {
+                console.error("Error toggling like: ", error);
+                 customAlert('Error', `Could not update like status: ${error.message}`, 'OK');
+            }
+        }
 
-                    if (btn.dataset.category === category) {
-                        btn.classList.add('active-tab', 'text-primary-blue', 'border-primary-blue');
-                        btn.classList.remove('text-gray-500', 'hover:text-primary-blue', 'border-transparent');
+        /**
+         * Shows a modal (general utility function).
+         * @param {string} modalId - The ID of the modal element.
+         */
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('hidden');
+                // Trigger transition in next frame
+                setTimeout(() => {
+                    const content = modal.querySelector('div:first-child');
+                    content.classList.remove('scale-95', 'opacity-0');
+                    content.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            }
+        }
+
+        /**
+         * Hides a modal (general utility function).
+         * @param {string} modalId - The ID of the modal element.
+         */
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                 const content = modal.querySelector('div:first-child');
+                 content.classList.remove('scale-100', 'opacity-100');
+                 content.classList.add('scale-95', 'opacity-0');
+                 // Wait for transition to complete before hiding
+                 setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+        
+        /**
+         * Displays a custom alert/confirmation modal.
+         * @param {string} title - The title of the alert.
+         * @param {string} message - The message body.
+         * @param {string} buttonText - The text for the main action button.
+         * @param {function} [callback=null] - Optional function to run on main button click.
+         */
+        function customAlert(title, message, buttonText, callback = null) {
+            elements.alertTitle.textContent = title;
+            elements.alertMessage.innerHTML = message;
+            elements.alertActions.innerHTML = ''; // Clear previous buttons
+
+            // Cancel/Close button for confirmations/alerts
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.className = 'px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition';
+            closeButton.onclick = () => closeModal('customAlert');
+
+            // Action button (e.g., OK, Confirm)
+            const actionButton = document.createElement('button');
+            actionButton.textContent = buttonText;
+            actionButton.className = 'px-4 py-2 bg-secondary-green text-white font-semibold rounded-lg hover:bg-green-600 transition';
+            
+            if (callback) {
+                // If a callback is provided, this is a confirmation
+                actionButton.onclick = callback;
+                elements.alertActions.appendChild(closeButton); // Add Cancel button for confirmation
+                elements.alertActions.appendChild(actionButton);
+            } else {
+                // If no callback, this is a simple alert
+                elements.alertActions.appendChild(actionButton);
+                actionButton.onclick = () => closeModal('customAlert');
+            }
+
+            showModal('customAlert');
+        }
+
+        /**
+         * Handles category tab switching.
+         * @param {Event} event - The click event from the tab.
+         */
+        function handleTabClick(event) {
+            const newFilter = event.target.dataset.category;
+            if (newFilter === currentFilter) return; // No change
+
+            // 1. Update active class
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('tab-active');
+            });
+            event.target.classList.add('tab-active');
+
+            // 2. Update filter and re-run the listener (which re-renders the list)
+            currentFilter = newFilter;
+            // No need to re-run setupServiceListener, just re-run the listener logic
+            // We just need to trigger a re-render/re-filter, which is easier than recreating the listener.
+            // Since onSnapshot returns *all* data, we filter locally in renderServiceList.
+            // However, to keep the query optimized if we ever use `where` in the future, 
+            // we should re-subscribe. But for now, we'll re-filter locally (which is simple and efficient enough).
+            
+            // NOTE: Since the current Firestore listener fetches ALL data and we filter locally (in renderServiceList),
+            // we do NOT need to re-subscribe (`setupServiceListener()`). We just need to force a re-render.
+            // A simple way to achieve this is to run the listener logic on the cached data if possible,
+            // but since we rely on `onSnapshot`, the simplest guarantee of showing the correct view 
+            // is to trigger a re-listen if the query was more complex, but here we just re-render.
+
+            // Since we don't store the full, unfiltered snapshot data globally, 
+            // the safest approach is to re-subscribe to the filtered query if we want to optimize the database query.
+            // Let's stick to the current plan: fetching all data and filtering locally for simplicity in this single-file app.
+            
+            // To force a re-render of the list with the new filter, we will call setupServiceListener()
+            // which will detach the old listener and attach a new one with the appropriate query,
+            // although the query is currently simple enough that it could just re-render the existing data.
+            // For future proofing with a proper `where` clause:
+            setupServiceListener(); 
+        }
+
+        /**
+         * Main function to initialize the application.
+         */
+        async function initializeApp() {
+            try {
+                // 1. Initialize Firebase App and Services
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                window.app.db = db;
+                window.app.auth = auth;
+
+                // 2. Handle Authentication
+                // Listen for Auth state changes (only necessary if we want to update the UI immediately on login/logout)
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
+                        // Sign in anonymously if no user is present
+                        if (initialAuthToken) {
+                            // If running in Canvas, use the token
+                            await signInWithCustomToken(auth, initialAuthToken);
+                            userId = auth.currentUser.uid;
+                        } else {
+                            // If running outside Canvas (e.g., GitHub Pages), sign in anonymously
+                            const anonUser = await signInAnonymously(auth);
+                            userId = anonUser.user.uid;
+                        }
+                    }
+
+                    // Update UI with User ID
+                    elements.userIdDisplay.textContent = `${userId.substring(0, 8)}...`;
+                    window.app.userId = userId;
+
+                    // Ensure this block runs only once after the initial auth check
+                    if (!isAuthReady) {
+                        isAuthReady = true;
+                        // 3. Setup Firestore Listener AFTER Authentication is ready
+                        setupServiceListener();
                     }
                 });
 
-                // Re-render the list with the new filter
-                if (this.services) {
-                    this.renderServiceList(this.services);
-                }
-            },
+                // 4. Attach Event Listeners for Tabs
+                document.querySelectorAll('.category-tab').forEach(tab => {
+                    tab.addEventListener('click', handleTabClick);
+                });
 
-            // --- Firestore Operations ---
-            
-            async submitService(event) {
-                event.preventDefault();
 
-                if (!this.userId) {
-                    this.customAlert("User is not authenticated. Please wait for the app to finish loading.", "Error");
-                    return;
-                }
-
-                // Gather form data
-                const name = document.getElementById('service-name').value.trim();
-                const category = document.getElementById('service-category').value;
-                const contact = document.getElementById('service-contact').value.trim();
-                const description = document.getElementById('service-description').value.trim();
-                const location = document.getElementById('service-location').value.trim();
-                
-                if (!name || !category || !contact || !description || !location) {
-                    this.customAlert("Please fill out all fields before submitting.", "Missing Information");
-                    return;
-                }
-
-                const newService = {
-                    name: name,
-                    category: category,
-                    contact: contact,
-                    description: description,
-                    location: location,
-                    creatorId: this.userId,
-                    timestamp: serverTimestamp() 
-                };
-
-                const collectionPath = `artifacts/${appId}/public/data/services`;
-
-                try {
-                    await addDoc(collection(db, collectionPath), newService);
-
-                    this.customAlert("Your service has been listed successfully!", "Success", "alert");
-                    this.closeModal('service-modal');
-                } catch (e) {
-                    console.error("Error saving document: ", e);
-                    this.customAlert("There was an error saving your service. Check the console for details.", "Submission Error", "alert");
-                }
-            },
-            
-            confirmDelete(serviceId, serviceName) {
-                this.customAlert(
-                    `Are you sure you want to delete the listing for "${serviceName}"? This action cannot be undone.`, 
-                    "Confirm Deletion", 
-                    "confirm", 
-                    (confirmed) => {
-                        if (confirmed) {
-                            this.deleteService(serviceId);
-                        }
-                    }
-                );
-            },
-
-            async deleteService(serviceId) {
-                const docPath = `artifacts/${appId}/public/data/services/${serviceId}`;
-                
-                try {
-                    await deleteDoc(doc(db, docPath));
-                    this.customAlert("Service successfully deleted.", "Success");
-                } catch (e) {
-                    console.error("Error deleting document: ", e);
-                    this.customAlert("Failed to delete the service. This may be due to a permission error.", "Deletion Error");
-                }
-            },
-
-            // --- Utility Functions ---
-            
-            // Basic sanitization to prevent XSS in rendered content
-            sanitize(text) {
-                if (typeof text !== 'string') return text;
-                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
-                return text.replace(/[&<>"']/ig, (match)=>(map[match]));
+            } catch (error) {
+                console.error("Critical initialization error: ", error);
+                // Display the specific error that prevented startup
+                elements.loadingIndicator.classList.add('hidden');
+                customAlert('Startup failed', `Firebase: Error (${error.code || 'unknown-error'}.-${error.message || 'The app cannot start.'}).`, 'Understood');
             }
-        };
+        }
 
-        // Attach submit listener to the form once the DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('submission-form').addEventListener('submit', (e) => window.app.submitService(e));
-        });
-
-        // Start the application initialization on window load
-        window.addEventListener('load', () => window.app.initializeApp());
+        // --- Start the application on window load. ---
+        window.addEventListener('load', initializeApp);
 
     </script>
-
 </body>
 </html>
 
