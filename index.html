@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -69,7 +68,6 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- Firebase SDK Imports (must be type="module") -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -83,9 +81,21 @@
         let currentUserId = 'Loading...';
         let isAuthReady = false;
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- PASTE YOUR FIREBASE CONFIGURATION HERE ---
+        // This object contains the unique keys for YOUR Firebase project.
+        const firebaseConfig = {
+          apiKey: "AIzaSy...YOUR_API_KEY", // 👈 CRITICAL: REPLACE THIS!
+          authDomain: "your-project-id.firebaseapp.com", // 👈 CRITICAL: REPLACE THIS!
+          projectId: "your-project-id", // 👈 CRITICAL: REPLACE THIS!
+          storageBucket: "your-project-id.appspot.com",
+          messagingSenderId: "1234567890",
+          appId: "1:1234567890:web:abcdef123456"
+        };
+        
+        // We get the appId directly from the config now.
+        const appId = firebaseConfig.appId;
+        // We are using anonymous sign-in, so we don't need a custom token.
+        const initialAuthToken = null; 
 
         // Service categories for filtering
         const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
@@ -162,8 +172,8 @@
 
         // --- Firebase Initialization and Auth Logic (CRITICAL for fixing the issue) ---
         function initFirebaseApp() {
-            if (!firebaseConfig) {
-                showStartupError("Firebase configuration missing. The app cannot start.");
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                showStartupError("Firebase configuration is missing or incomplete. Please paste your project's config object.");
                 return;
             }
 
@@ -212,6 +222,7 @@
                 console.error("Authentication Error:", error);
                 // Even if custom token fails, onAuthStateChanged should still trigger with the user being null.
                 // If sign in fails, we let onAuthStateChanged handle the final state.
+                showStartupError("Authentication failed. Ensure Anonymous sign-in is enabled in Firebase Console.");
             }
         }
 
@@ -317,7 +328,6 @@
                             ${isOwner ? 
                                 `<button onclick="app.confirmDeleteService('${service.id}', '${service.name}')" class="text-fiji-coral hover:text-red-700 font-medium">Delete</button>`
                                 : ''}
-                            <!-- Like Button (simplified for core functionality) -->
                             <button class="like-btn text-gray-400 hover:text-red-500 transition duration-150">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
@@ -461,20 +471,16 @@
 
     </script>
 
-    <!-- Main Application Container -->
     <div class="max-w-4xl mx-auto p-4 md:p-6">
         
-        <!-- Header Card -->
         <header class="bg-white p-6 rounded-xl shadow-xl text-center mb-6">
             <h1 class="text-4xl font-extrabold text-primary-blue">Fiji Local Link</h1>
             <p class="text-gray-500 text-sm mt-1">Connecting essential services in Fiji. (User ID: <span id="user-id" class="font-mono text-xs font-semibold text-fiji-blue tracking-wider">Loading...</span>)</p>
         </header>
 
-        <!-- Loading Indicator -->
         <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-md">
             <p id="loading-message" class="text-lg font-semibold text-fiji-blue mb-3">Connecting to Database...</p>
             <div class="flex justify-center items-center">
-                <!-- Simple CSS Loading Spinner -->
                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -482,28 +488,21 @@
             </div>
         </div>
 
-        <!-- Content Area (Hidden until loaded) -->
         <div id="content-area" class="hidden">
-            <!-- Category Tabs -->
             <div id="category-tabs" class="flex flex-wrap justify-start items-center space-x-2 md:space-x-6 bg-white rounded-xl shadow-md p-2 md:p-4 mb-6">
-                <!-- Tabs will be generated here by JavaScript -->
-            </div>
+                </div>
 
-            <!-- Service List -->
             <div id="service-list" class="space-y-4 custom-scrollbar max-h-[70vh] overflow-y-auto">
-                <!-- Services will be rendered here by renderServices -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- Add Service Floating Action Button (FAB) -->
     <button onclick="app.openModal('serviceModal')" class="fixed bottom-6 right-6 p-4 rounded-full bg-primary-blue text-white shadow-lg hover:bg-blue-600 transition duration-150">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
         </svg>
     </button>
 
-    <!-- Modal for Adding Service -->
     <div id="serviceModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 modal-overlay hidden flex items-center justify-center p-4 z-50 transition-opacity duration-300">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 relative transform transition-all duration-300 scale-100 opacity-100">
             <button onclick="app.closeModal('serviceModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition">
@@ -539,17 +538,14 @@
         </div>
     </div>
 
-    <!-- Custom Alert/Confirmation Modal (Replaces alert() and confirm()) -->
     <div id="customAlert" class="fixed inset-0 bg-gray-900 bg-opacity-75 modal-overlay hidden flex items-center justify-center p-4 z-50 transition-opacity duration-300">
         <div class="modal-content bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 relative transform transition-all duration-300 opacity-0 scale-90">
             <h3 id="modal-title" class="text-xl font-bold text-primary-blue mb-4">Alert</h3>
             <p id="modal-body" class="text-gray-600 mb-6"></p>
             <div id="modal-buttons">
-                <!-- Buttons added by JavaScript -->
-            </div>
+                </div>
         </div>
     </div>
     
 </body>
 </html>
-
