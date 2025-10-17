@@ -70,8 +70,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, query, where, Timestamp, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, deleteDoc, Timestamp, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Global Variables (must be used for environment setup) ---
@@ -81,21 +81,18 @@
         let currentUserId = 'Loading...';
         let isAuthReady = false;
         
-        // --- PASTE YOUR FIREBASE CONFIGURATION HERE ---
-        // This object contains the unique keys for YOUR Firebase project.
+        // --- YOUR FIREBASE CONFIGURATION (Copied from your console) ---
         const firebaseConfig = {
-          apiKey: "AIzaSy...YOUR_API_KEY", // 👈 CRITICAL: REPLACE THIS!
-          authDomain: "your-project-id.firebaseapp.com", // 👈 CRITICAL: REPLACE THIS!
-          projectId: "your-project-id", // 👈 CRITICAL: REPLACE THIS!
-          storageBucket: "your-project-id.appspot.com",
-          messagingSenderId: "1234567890",
-          appId: "1:1234567890:web:abcdef123456"
+          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HD...", // Your unique API Key
+          authDomain: "fijilocallink.firebaseapp.com",
+          projectId: "fijilocallink",
+          storageBucket: "fijilocallink.appspot.com",
+          messagingSenderId: "246057187129",
+          appId: "1:246057187129:web:0ce25c1aa..." 
         };
         
-        // We get the appId directly from the config now.
+        // We get the appId directly from the config.
         const appId = firebaseConfig.appId;
-        // We are using anonymous sign-in, so we don't need a custom token.
-        const initialAuthToken = null; 
 
         // Service categories for filtering
         const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
@@ -172,11 +169,6 @@
 
         // --- Firebase Initialization and Auth Logic (CRITICAL for fixing the issue) ---
         function initFirebaseApp() {
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                showStartupError("Firebase configuration is missing or incomplete. Please paste your project's config object.");
-                return;
-            }
-
             // Set debug log level for better console visibility
             setLogLevel('Debug');
             
@@ -203,7 +195,7 @@
                     // Only start listening for data AFTER auth is confirmed and ready
                     await listenForServices(); 
                 } else if (!user) {
-                    // If no user is found after the initial check (e.g., initial token failed or expired)
+                    // If no user is found after the initial check (which shouldn't happen if Anonymous is enabled)
                     currentUserId = 'NOT_AUTHENTICATED';
                     document.getElementById('user-id').textContent = currentUserId;
                     hideLoader();
@@ -213,16 +205,11 @@
 
         async function authenticateUser() {
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Since Anonymous Sign-in is enabled, this should now succeed
+                await signInAnonymously(auth);
             } catch (error) {
                 console.error("Authentication Error:", error);
-                // Even if custom token fails, onAuthStateChanged should still trigger with the user being null.
-                // If sign in fails, we let onAuthStateChanged handle the final state.
-                showStartupError("Authentication failed. Ensure Anonymous sign-in is enabled in Firebase Console.");
+                showStartupError("Authentication failed. Check your Firebase config or Anonymous sign-in setting.");
             }
         }
 
@@ -256,12 +243,9 @@
             const collectionPath = `artifacts/${appId}/public/data/services`;
             
             try {
-                // Set up the base query
+                // Set up the base query: Sort by creation time (descending) and limit the results
                 let servicesRef = collection(db, collectionPath);
-                let q = query(servicesRef);
-                
-                // Sort by creation time (descending) and limit the results
-                q = query(servicesRef, orderBy('createdAt', 'desc'), limit(100));
+                let q = query(servicesRef, orderBy('createdAt', 'desc'), limit(100));
 
                 // Listen for real-time updates
                 onSnapshot(q, (snapshot) => {
@@ -271,11 +255,10 @@
                 }, (error) => {
                     // CRITICAL: Log the error details to the console for debugging
                     console.error("Firestore Real-Time Data Error:", error);
-                    let errorMessage = `Could not load services in real-time. Please check console for details.`;
+                    let errorMessage = `Could not load services. Check console for details.`;
                     
-                    // Check for specific permission denied error for better user feedback
                     if (error.code === 'permission-denied') {
-                        errorMessage += `<br><br>The server reported: <strong>Permission Denied.</strong> This usually means your security rules are too strict for anonymous users.`;
+                        errorMessage += `<br><br>The server reported: <strong>Permission Denied.</strong> This means your Firestore security rules are blocking access.`;
                     }
                     
                     appModal.showModal('Data Error', errorMessage, 'error');
@@ -349,16 +332,13 @@
                 button.className = `px-4 py-2 text-lg font-medium text-gray-600 border-b-2 border-transparent transition duration-150 hover:text-primary-blue hover:border-primary-blue ${category === currentCategory ? 'tab-active' : ''}`;
                 button.onclick = () => {
                     currentCategory = category;
-                    // Simply re-render the existing services (onSnapshot will handle the update if it's running)
-                    // For now, let's keep it simple and just re-filter the local view until the next onSnapshot fires.
-                    // A proper implementation would run a new query, but we keep the single Q for simplicity here.
-                    // For this environment, we rely on the next onSnapshot firing soon after any change, or simply relying on the client side filtering.
                     const allTabs = tabsContainer.querySelectorAll('button');
                     allTabs.forEach(tab => tab.classList.remove('tab-active'));
                     button.classList.add('tab-active');
-                    // Rerender to show filtered results immediately
-                    const currentServices = app.getCurrentServices();
-                    if (currentServices) renderServices(currentServices);
+                    // Rerender to show filtered results immediately (relies on the list being built in renderServices)
+                    if (window.currentServicesCache) {
+                        renderServices(window.currentServicesCache);
+                    }
                 };
                 tabsContainer.appendChild(button);
             });
@@ -437,7 +417,6 @@
             const docRef = doc(db, collectionPath, serviceId);
             
             try {
-                // Although security rules should enforce ownership, we check to be safe
                 // The onSnapshot listener will handle UI update in real-time
                 await deleteDoc(docRef);
                 appModal.showModal("Deleted", "Service successfully removed.", 'alert');
@@ -454,13 +433,6 @@
             closeModal: (id) => document.getElementById(id).classList.add('hidden'),
             submitService,
             confirmDeleteService,
-            getCurrentServices: () => {
-                 // Note: In a large-scale app, we would store the services in a global variable 
-                 // updated by onSnapshot. For this demo, this is a placeholder 
-                 // that assumes onSnapshot will trigger a full re-render soon.
-                 // For now, we will rely on onSnapshot to handle the data refresh.
-                 return []; // Returning empty array as we don't store services globally in this minimal structure.
-            }
         };
 
         // Initialize the app on window load
