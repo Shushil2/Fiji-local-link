@@ -81,16 +81,16 @@
         let currentUserId = 'Loading...';
         let isAuthReady = false;
         
-        // --- YOUR CORRECT FIREBASE CONFIGURATION (Based on your project ID) ---
-        // This configuration uses the unique IDs we extracted from your screenshots.
+        // --- YOUR CORRECT FIREBASE CONFIGURATION ---
+        // The API Key has been updated with the correct value you provided.
         const firebaseConfig = {
-          // This API Key is redacted for security, but MUST be your correct key
-          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HD...", 
+          // CORRECT API KEY INSERTED HERE
+          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HDzV9RQY-vDxh8", 
           authDomain: "fijilocallink.firebaseapp.com",
           projectId: "fijilocallink",
           storageBucket: "fijilocallink.appspot.com",
           messagingSenderId: "246057187129",
-          appId: "1:246057187129:web:0ce25c1aa..." 
+          appId: "1:246057187129:web:0ce25c1aa059b360badae8" 
         };
         
         // We get the appId directly from the config.
@@ -169,7 +169,7 @@
         
         const appModal = new CustomModal('customAlert');
 
-        // --- Firebase Initialization and Auth Logic (CRITICAL for fixing the issue) ---
+        // --- Firebase Initialization and Auth Logic ---
         function initFirebaseApp() {
             // Set debug log level for better console visibility
             setLogLevel('Debug');
@@ -197,7 +197,7 @@
                     // Only start listening for data AFTER auth is confirmed and ready
                     await listenForServices(); 
                 } else if (!user) {
-                    // If no user is found after the initial check (which shouldn't happen if Anonymous is enabled)
+                    // If no user is found after the initial check 
                     currentUserId = 'NOT_AUTHENTICATED';
                     document.getElementById('user-id').textContent = currentUserId;
                     hideLoader();
