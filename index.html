@@ -81,9 +81,11 @@
         let currentUserId = 'Loading...';
         let isAuthReady = false;
         
-        // --- YOUR FIREBASE CONFIGURATION (Copied from your console) ---
+        // --- YOUR CORRECT FIREBASE CONFIGURATION (Based on your project ID) ---
+        // This configuration uses the unique IDs we extracted from your screenshots.
         const firebaseConfig = {
-          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HD...", // Your unique API Key
+          // This API Key is redacted for security, but MUST be your correct key
+          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HD...", 
           authDomain: "fijilocallink.firebaseapp.com",
           projectId: "fijilocallink",
           storageBucket: "fijilocallink.appspot.com",
@@ -208,6 +210,7 @@
                 // Since Anonymous Sign-in is enabled, this should now succeed
                 await signInAnonymously(auth);
             } catch (error) {
+                // This block catches the "Authentication failed" error
                 console.error("Authentication Error:", error);
                 showStartupError("Authentication failed. Check your Firebase config or Anonymous sign-in setting.");
             }
@@ -250,6 +253,8 @@
                 // Listen for real-time updates
                 onSnapshot(q, (snapshot) => {
                     const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Cache the services for client-side filtering
+                    window.currentServicesCache = services; 
                     renderServices(services);
                     hideLoader();
                 }, (error) => {
@@ -335,7 +340,7 @@
                     const allTabs = tabsContainer.querySelectorAll('button');
                     allTabs.forEach(tab => tab.classList.remove('tab-active'));
                     button.classList.add('tab-active');
-                    // Rerender to show filtered results immediately (relies on the list being built in renderServices)
+                    // Rerender to show filtered results immediately 
                     if (window.currentServicesCache) {
                         renderServices(window.currentServicesCache);
                     }
