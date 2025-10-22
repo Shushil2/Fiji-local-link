@@ -4,20 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'primary-blue': '#0A4AF1',
-                        'secondary-green': '#4C7F59',
-                        'fiji-gold': '#FFD700',
+                        'primary-blue': '#0A4A7F', // Fiji Blue
+                        'secondary-green': '#4CAF50', // Standard success green
+                        'fiji-gold': '#FFD700', // Gold accent
                         'fiji-blue': '#102A4A',
-                        'fiji-coral': '#F27B4A',
+                        'fiji-coral': '#F27272', // Coral accent
                     },
                 },
-            },
+            }
         }
     </script>
     <style>
@@ -26,503 +27,415 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f7f9;
+            background-color: #f0f4f9;
         }
 
-        /* Utility classes for active tab and modal backdrop */
+        /* Custom styling for the tab/button active state */
         .tab-active {
-            border-bottom: 3px solid var(--primary-blue);
+            border-bottom: 3px solid #0A4A7F;
+            color: #0A4A7F;
             font-weight: 600;
-            color: var(--primary-blue);
-            transition: all 0.2s ease-in-out;
+            transition: transform 0.2s;
         }
 
+        /* Modal backdrop and overlay styling */
         .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
         }
 
-        /* Custom scrollbar for better aesthetics */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
+        /* Custom styles for the plus button */
+        .plus-button {
+            transition: opacity 0.3s, transform 0.3s;
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(16, 42, 74, 0.4); /* fiji-blue semi-transparent */
-            border-radius: 10px;
+        .plus-button:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
+        
+        /* Loading spinner */
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #0A4A7F; /* Primary Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
         }
 
-        .like-btn:active {
-            transform: scale(0.95);
-            transition: transform 0.1s;
-        }
-
-        /* Set primary-blue as a CSS variable for easier use in border/shadow */
-        :root {
-            --primary-blue: #0A4AF1;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body class="min-h-screen">
+    <div id="app" class="max-w-xl mx-auto p-4 md:p-6">
+        <!-- Application Container -->
+        
+        <!-- Header Card -->
+        <div class="header-card bg-white p-6 rounded-xl shadow-lg mb-6">
+            <h1 class="text-3xl font-extrabold text-primary-blue text-center">Fiji Local Link</h1>
+            <p class="text-sm text-gray-500 mt-1 text-center">Connecting essential services in Fiji. (User ID: <span id="user-id-display" class="font-mono text-xs">Loading...</span>)</p>
+        </div>
 
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-lg mb-6 flex flex-col items-center justify-center">
+            <div class="loader mb-3"></div>
+            <p class="text-primary-blue font-semibold">Connecting to Database...</p>
+        </div>
+
+        <!-- Error Container -->
+        <div id="error-container" class="hidden text-center p-8 bg-red-100 rounded-xl shadow-lg mb-6 border-l-4 border-red-500 text-red-700">
+            <p class="font-bold mb-2">Error: <span id="error-message"></span></p>
+            <p class="text-sm">Please refresh the page or check the console for details.</p>
+        </div>
+
+        <!-- Main Content Area (Hidden until loaded) -->
+        <div id="content-area" class="hidden">
+            
+            <!-- Category Tabs -->
+            <div id="tab-container" class="flex justify-between space-x-2 bg-white p-3 rounded-xl shadow-lg mb-6 overflow-x-auto whitespace-nowrap">
+                <!-- Tabs will be rendered here by JavaScript -->
+            </div>
+
+            <!-- Service List -->
+            <div id="service-list" class="space-y-4">
+                <!-- Services will be rendered here by JavaScript -->
+                <div id="empty-state" class="text-center p-8 bg-white rounded-xl shadow-lg text-gray-500">
+                    <p class="text-lg font-semibold mb-1">No services found in this category.</p>
+                    <p class="text-sm">Be the first to list a service!</p>
+                </div>
+            </div>
+
+            <!-- Add Service Button (Floating Action Button) -->
+            <button id="add-service-btn" class="plus-button fixed bottom-6 right-6 md:right-8 w-14 h-14 bg-primary-blue text-white rounded-full shadow-2xl flex items-center justify-center text-3xl z-30">
+                +
+            </button>
+        </div>
+        
+        <!-- MODAL PLACEHOLDER (Will be injected by JS) -->
+    </div>
+    
     <script type="module">
+        // Import Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, deleteDoc, Timestamp, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- Global Variables (must be used for environment setup) ---
-        let app;
-        let db;
-        let auth;
-        let currentUserId = 'Loading...';
-        let isAuthReady = false;
-        
-        // --- YOUR CORRECT FIREBASE CONFIGURATION ---
-        // The API Key has been updated with the correct value you provided.
-        const firebaseConfig = {
-          // CORRECT API KEY INSERTED HERE
-          apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HDzV9RQY-vDxh8", 
-          authDomain: "fijilocallink.firebaseapp.com",
-          projectId: "fijilocallink",
-          storageBucket: "fijilocallink.appspot.com",
-          messagingSenderId: "246057187129",
-          appId: "1:246057187129:web:0ce25c1aa059b360badae8" 
+
+        // Set Firebase logging for debug purposes (can be removed in production)
+        setLogLevel('Debug');
+
+        // --- GLOBAL VARIABLES & CONFIGURATION ---
+
+        // =========================================================================
+        // IMPORTANT: REPLACE THIS PLACEHOLDER CONFIG WITH YOUR ACTUAL FIREBASE CONFIG
+        // This is only used if the app runs outside the Canvas environment (e.g., GitHub Pages).
+        // Get this config from your Firebase Project settings > Web App > Config.
+        // =========================================================================
+        const FALLBACK_FIREBASE_CONFIG = {
+            apiKey: "YOUR_API_KEY_HERE", // <-- 1. REPLACE THIS with your actual API Key
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // <-- 2. REPLACE THIS with your Auth Domain
+            projectId: "YOUR_PROJECT_ID", // <-- 3. REPLACE THIS with your Project ID
+            storageBucket: "YOUR_PROJECT_ID.appspot.com", // <-- 4. REPLACE THIS with your Storage Bucket (optional but recommended)
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // <-- 5. REPLACE THIS with your Sender ID (optional but recommended)
+            appId: "YOUR_APP_ID_HERE" // <-- 6. REPLACE THIS with your App ID
         };
         
-        // We get the appId directly from the config.
-        const appId = firebaseConfig.appId;
+        const FALLBACK_APP_ID = 'fiji-local-link-v1'; // Default App ID for public deployment
+        const FALLBACK_AUTH_TOKEN = null; // No custom token on public deployment
+        
+        let firebaseConfig;
+        let appId;
+        let initialAuthToken;
 
-        // Service categories for filtering
-        const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
+        // Determine environment and load configuration
+        try {
+            // Attempt to load configurations provided by the Canvas environment
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FALLBACK_FIREBASE_CONFIG;
+            appId = typeof __app_id !== 'undefined' ? __app_id : FALLBACK_APP_ID;
+            initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : FALLBACK_AUTH_TOKEN;
+            
+            // Critical check for manual configuration if running outside Canvas
+            if (firebaseConfig.apiKey === 'YOUR_API_KEY_HERE' && typeof __firebase_config === 'undefined') {
+                 // This error is caught and displayed by the catch block
+                 throw new Error("Missing manual Firebase configuration.");
+            }
+        } catch (error) {
+            console.error("Configuration Error:", error);
+            showError("Firebase configuration missing. Did you replace the placeholder values in the HTML file?", true);
+            return; // Halt execution if config is critically missing
+        }
+
+        // --- INITIALIZE FIREBASE ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // --- GLOBAL STATE ---
+        let userId = null;
+        let isAuthReady = false;
         let currentCategory = 'All Services';
+        const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
+        let servicesData = []; // Cache for all fetched services
 
-        // Custom Modal UI Class (Replaces alert/confirm)
-        class CustomModal {
-            constructor(modalId) {
-                this.modal = document.getElementById(modalId);
-                this.titleElement = this.modal.querySelector('#modal-title');
-                this.bodyElement = this.modal.querySelector('#modal-body');
-                this.buttonContainer = this.modal.querySelector('#modal-buttons');
-                
-                // Bind close method for reuse
-                this.closeModal = this.closeModal.bind(this);
-            }
+        // --- DOM ELEMENTS ---
+        const $contentArea = document.getElementById('content-area');
+        const $serviceList = document.getElementById('service-list');
+        const $emptyState = document.getElementById('empty-state');
+        const $tabContainer = document.getElementById('tab-container');
+        const $loadingIndicator = document.getElementById('loading-indicator');
+        const $errorContainer = document.getElementById('error-container');
+        const $errorMessage = document.getElementById('error-message');
+        const $userIdDisplay = document.getElementById('user-id-display');
+        const $addServiceBtn = document.getElementById('add-service-btn');
 
-            showModal(title, message, type = 'alert', actions = []) {
-                this.titleElement.textContent = title;
-                this.bodyElement.innerHTML = message;
-                this.buttonContainer.innerHTML = ''; // Clear previous buttons
-                
-                // Common close button
-                const closeButton = document.createElement('button');
-                closeButton.textContent = 'Understood';
-                closeButton.onclick = this.closeModal;
-                closeButton.className = 'w-full py-3 px-4 rounded-xl font-bold transition duration-150';
-
-                if (type === 'alert' || type === 'error') {
-                    closeButton.className += (type === 'error' ? ' bg-fiji-coral hover:bg-red-600 text-white' : ' bg-primary-blue hover:bg-blue-600 text-white');
-                    this.buttonContainer.appendChild(closeButton);
-                } else if (type === 'confirm' && actions.length === 2) {
-                    // Custom confirmation buttons (e.g., Cancel and OK)
-                    
-                    const [cancelAction, confirmAction] = actions;
-                    
-                    // Cancel Button
-                    const cancelButton = document.createElement('button');
-                    cancelButton.textContent = cancelAction.label;
-                    cancelButton.onclick = () => {
-                        cancelAction.callback();
-                        this.closeModal();
-                    };
-                    cancelButton.className = 'flex-1 py-3 px-4 rounded-xl font-bold bg-gray-200 hover:bg-gray-300 transition duration-150';
-
-                    // Confirm Button
-                    const confirmButton = document.createElement('button');
-                    confirmButton.textContent = confirmAction.label;
-                    confirmButton.onclick = () => {
-                        confirmAction.callback();
-                        this.closeModal();
-                    };
-                    confirmButton.className = 'flex-1 py-3 px-4 rounded-xl font-bold bg-fiji-coral hover:bg-red-600 text-white ml-3 transition duration-150';
-
-                    this.buttonContainer.classList.add('flex', 'justify-between');
-                    this.buttonContainer.appendChild(cancelButton);
-                    this.buttonContainer.appendChild(confirmButton);
-                }
-
-                this.modal.classList.remove('hidden');
-                setTimeout(() => this.modal.querySelector('.modal-content').classList.remove('opacity-0', 'scale-90'), 10);
-            }
-
-            closeModal() {
-                this.modal.querySelector('.modal-content').classList.add('opacity-0', 'scale-90');
-                setTimeout(() => {
-                    this.modal.classList.add('hidden');
-                    this.buttonContainer.classList.remove('flex', 'justify-between');
-                }, 150);
-            }
-        }
+        // --- UTILITY FUNCTIONS ---
         
-        const appModal = new CustomModal('customAlert');
-
-        // --- Firebase Initialization and Auth Logic ---
-        function initFirebaseApp() {
-            // Set debug log level for better console visibility
-            setLogLevel('Debug');
+        /** Shows a modal error message and updates the error container */
+        function showError(message, isCritical = true) {
+            console.error(message);
+            $loadingIndicator.classList.add('hidden');
+            $contentArea.classList.add('hidden');
             
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
+            $errorMessage.textContent = message;
+            $errorContainer.classList.remove('hidden');
             
-            // 1. Start the authentication process
-            authenticateUser();
-
-            // 2. Set up the state change listener (This is the single source of truth for user status)
-            onAuthStateChanged(auth, async (user) => {
-                let newUserId = 'NOT_AUTHENTICATED';
-                if (user) {
-                    newUserId = user.uid;
-                }
-                
-                currentUserId = newUserId;
-                document.getElementById('user-id').textContent = currentUserId;
-                
-                // If authentication is now ready and the user is signed in (or anonymously signed in)
-                if (!isAuthReady && user) {
-                    isAuthReady = true;
-                    // Only start listening for data AFTER auth is confirmed and ready
-                    await listenForServices(); 
-                } else if (!user) {
-                    // If no user is found after the initial check 
-                    currentUserId = 'NOT_AUTHENTICATED';
-                    document.getElementById('user-id').textContent = currentUserId;
-                    hideLoader();
-                }
+            // Show a custom modal for the error
+            app.showModal({
+                id: 'criticalErrorModal',
+                title: isCritical ? 'Critical Error' : 'Data Error',
+                content: `<p>${message}</p>`,
+                buttons: [{ text: 'Understood', class: isCritical ? 'bg-red-500' : 'bg-primary-blue' }]
             });
         }
-
-        async function authenticateUser() {
-            try {
-                // Since Anonymous Sign-in is enabled, this should now succeed
-                await signInAnonymously(auth);
-            } catch (error) {
-                // This block catches the "Authentication failed" error
-                console.error("Authentication Error:", error);
-                showStartupError("Authentication failed. Check your Firebase config or Anonymous sign-in setting.");
-            }
-        }
-
-        // --- UI State Management ---
-        function showLoader(message = "Connecting to Database...") {
-            document.getElementById('loading-indicator').classList.remove('hidden');
-            document.getElementById('loading-message').textContent = message;
-            document.getElementById('content-area').classList.add('hidden');
-        }
-
-        function hideLoader() {
-            document.getElementById('loading-indicator').classList.add('hidden');
-            document.getElementById('content-area').classList.remove('hidden');
-        }
         
-        function showStartupError(message) {
-             hideLoader();
-             appModal.showModal('Error', message, 'error');
+        /** Hides the error container */
+        function hideError() {
+             $errorContainer.classList.add('hidden');
         }
 
-        // --- Data Listener (Firestore Realtime) ---
-        async function listenForServices() {
-            if (!db || !isAuthReady) {
-                showStartupError("Database not initialized or user not authenticated.");
-                return;
+        /** Clears and populates the service list based on the current category */
+        function renderServices() {
+            $serviceList.innerHTML = '';
+            
+            let filteredServices = servicesData;
+            
+            if (currentCategory !== 'All Services') {
+                filteredServices = servicesData.filter(service => service.category === currentCategory);
             }
-
-            showLoader('Fetching Services...');
             
-            // Firestore data path for public, shared data
-            const collectionPath = `artifacts/${appId}/public/data/services`;
-            
-            try {
-                // Set up the base query: Sort by creation time (descending) and limit the results
-                let servicesRef = collection(db, collectionPath);
-                let q = query(servicesRef, orderBy('createdAt', 'desc'), limit(100));
-
-                // Listen for real-time updates
-                onSnapshot(q, (snapshot) => {
-                    const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Cache the services for client-side filtering
-                    window.currentServicesCache = services; 
-                    renderServices(services);
-                    hideLoader();
-                }, (error) => {
-                    // CRITICAL: Log the error details to the console for debugging
-                    console.error("Firestore Real-Time Data Error:", error);
-                    let errorMessage = `Could not load services. Check console for details.`;
-                    
-                    if (error.code === 'permission-denied') {
-                        errorMessage += `<br><br>The server reported: <strong>Permission Denied.</strong> This means your Firestore security rules are blocking access.`;
-                    }
-                    
-                    appModal.showModal('Data Error', errorMessage, 'error');
-                });
-
-            } catch (e) {
-                console.error("Error setting up listener:", e);
-                showStartupError("An error occurred during data setup. Check console.");
-            }
-        }
-
-        // --- Service Rendering and UI Logic ---
-
-        function renderServices(allServices) {
-            const listContainer = document.getElementById('service-list');
-            listContainer.innerHTML = '';
-            
-            // Filter services based on the current category
-            const filteredServices = currentCategory === 'All Services' 
-                ? allServices 
-                : allServices.filter(s => s.category === currentCategory);
-
             if (filteredServices.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="p-6 bg-white rounded-xl shadow-md text-center">
-                        <h3 class="text-xl font-semibold text-gray-700 mb-2">No services found in this category.</h3>
-                        <p class="text-gray-500">Be the first to list a service!</p>
-                    </div>
-                `;
-                return;
+                $emptyState.classList.remove('hidden');
+                $serviceList.appendChild($emptyState);
+            } else {
+                $emptyState.classList.add('hidden');
+                filteredServices.forEach(service => {
+                    $serviceList.appendChild(createServiceCard(service));
+                });
             }
-
-            filteredServices.forEach(service => {
-                const card = document.createElement('div');
-                card.className = 'p-5 bg-white rounded-xl shadow-lg border-l-4 border-primary-blue mb-4 transition duration-200 hover:shadow-xl';
-
-                const isOwner = service.ownerId === currentUserId;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <h2 class="text-xl md:text-2xl font-extrabold text-primary-blue mb-1">${service.name}</h2>
-                        <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${isOwner ? 'bg-fiji-coral text-white' : 'bg-secondary-green text-white'}">${service.category}</span>
-                    </div>
-                    
-                    <p class="text-gray-600 mb-3">${service.description.substring(0, 100)}${service.description.length > 100 ? '...' : ''}</p>
-                    
-                    <div class="flex justify-between items-center text-sm text-gray-500">
-                        <span>Listed by: ${service.ownerName}</span>
-                        <div class="flex items-center space-x-4">
-                            ${isOwner ? 
-                                `<button onclick="app.confirmDeleteService('${service.id}', '${service.name}')" class="text-fiji-coral hover:text-red-700 font-medium">Delete</button>`
-                                : ''}
-                            <button class="like-btn text-gray-400 hover:text-red-500 transition duration-150">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                listContainer.appendChild(card);
-            });
+            
+            // Ensure the main content is visible now that data (or lack thereof) is rendered
+            $loadingIndicator.classList.add('hidden');
+            $contentArea.classList.remove('hidden');
         }
 
-        function setupCategoryTabs() {
-            const tabsContainer = document.getElementById('category-tabs');
-            tabsContainer.innerHTML = '';
+        /** Creates a card element for a single service */
+        function createServiceCard(service) {
+            const card = document.createElement('div');
+            card.className = 'service-card bg-white p-4 rounded-xl shadow-md border-l-4 border-primary-blue hover:shadow-lg transition-shadow duration-300';
+            card.dataset.id = service.id;
+
+            const isOwner = service.ownerId === userId;
+            const ownerBadge = isOwner 
+                ? '<span class="text-xs font-semibold text-white bg-primary-blue px-2 py-0.5 rounded-full ml-2">You</span>' 
+                : '';
+            
+            // Format the display name (e.g., user-a1b2...)
+            const displayName = service.ownerId ? `user-${service.ownerId.substring(0, 4)}` : 'Anonymous';
+
+            const controls = isOwner 
+                ? `
+                <div class="flex space-x-2 mt-2 pt-2 border-t border-gray-100">
+                    <button data-id="${service.id}" data-action="delete" class="text-xs text-red-600 hover:text-red-800 font-medium">Delete</button>
+                </div>
+                `
+                : '';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">${service.name}</h2>
+                        <span class="text-xs font-semibold text-white bg-fiji-coral px-3 py-1 rounded-full">${service.category}</span>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 mt-2">${service.description}</p>
+                <div class="mt-3 text-right">
+                    <p class="text-xs text-gray-400">Listed by: ${displayName} ${ownerBadge}</p>
+                </div>
+                ${controls}
+            `;
+            
+            // Add event listener for delete button if owner
+            if (isOwner) {
+                const deleteButton = card.querySelector('[data-action="delete"]');
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    app.confirmDelete(service.id, service.name);
+                });
+            }
+
+            return card;
+        }
+
+        /** Renders the category tabs */
+        function renderTabs() {
+            $tabContainer.innerHTML = '';
             categories.forEach(category => {
                 const button = document.createElement('button');
                 button.textContent = category;
-                button.className = `px-4 py-2 text-lg font-medium text-gray-600 border-b-2 border-transparent transition duration-150 hover:text-primary-blue hover:border-primary-blue ${category === currentCategory ? 'tab-active' : ''}`;
-                button.onclick = () => {
+                button.className = `px-4 py-2 text-sm md:text-base rounded-lg transition-colors duration-200 ${category === currentCategory ? 'tab-active text-primary-blue' : 'text-gray-500 hover:text-primary-blue'}`;
+                button.addEventListener('click', () => {
                     currentCategory = category;
-                    const allTabs = tabsContainer.querySelectorAll('button');
-                    allTabs.forEach(tab => tab.classList.remove('tab-active'));
-                    button.classList.add('tab-active');
-                    // Rerender to show filtered results immediately 
-                    if (window.currentServicesCache) {
-                        renderServices(window.currentServicesCache);
-                    }
-                };
-                tabsContainer.appendChild(button);
+                    renderTabs(); // Re-render tabs to update active state
+                    renderServices(); // Re-render services based on new category
+                });
+                $tabContainer.appendChild(button);
             });
         }
         
-        // --- Form Submission Logic ---
+        // --- DATABASE FUNCTIONS ---
+
+        /** Sets up the real-time listener for services */
+        function listenForServices() {
+            if (!isAuthReady) {
+                return;
+            }
+            
+            const servicesCollectionRef = collection(db, `artifacts/${appId}/public/data/services`);
+            
+            // Query to listen for all services, sorted by creation time
+            const q = query(servicesCollectionRef, orderBy('createdAt', 'desc'));
+
+            onSnapshot(q, (snapshot) => {
+                const newServices = [];
+                snapshot.forEach((doc) => {
+                    newServices.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Update cached data
+                servicesData = newServices;
+                
+                // Re-render UI
+                renderServices();
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+                // Show a non-critical error for data loading failure
+                showError(`Could not load services. (Error: ${error.code})`, false);
+            });
+        }
+
+        /** Handles service submission */
         async function submitService(event) {
             event.preventDefault();
             
-            if (!auth.currentUser || currentUserId === 'NOT_AUTHENTICATED') {
-                appModal.showModal("Error", "User is not authenticated. Cannot save service.", 'error');
-                return;
-            }
-
-            const name = document.getElementById('service-name').value.trim();
-            const category = document.getElementById('service-category').value;
-            const description = document.getElementById('service-description').value.trim();
+            // Get data from the form (which is inside the modal)
+            const serviceName = document.getElementById('service-name').value.trim();
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value.trim();
             
-            // Basic validation
-            if (!name || !description || category === 'Select Category') {
-                appModal.showModal("Error", "Please fill out all required fields.", 'error');
+            if (!userId || userId === 'NOT_AUTHENTICATED' || !isAuthReady) {
+                app.showAlert('Error', 'Authentication required to list a service.');
                 return;
             }
-
+            
+            if (!serviceName || !description) {
+                app.showAlert('Validation Error', 'Please fill out all fields.');
+                return;
+            }
+            
             const newService = {
-                name: name,
+                name: serviceName,
                 category: category,
                 description: description,
-                ownerId: currentUserId,
-                ownerName: currentUserId.substring(0, 8) + '...', // Simple user display name
-                createdAt: Timestamp.now(),
+                ownerId: userId,
+                // ownerName is now derived from ID for consistency
+                createdAt: new Date(), 
             };
 
-            const collectionPath = `artifacts/${appId}/public/data/services`;
-            
             try {
-                // Use addDoc to automatically generate a document ID
-                const docRef = await addDoc(collection(db, collectionPath), newService);
-                console.log("Document written with ID: ", docRef.id);
+                const servicesCollectionRef = collection(db, `artifacts/${appId}/public/data/services`);
+                await addDoc(servicesCollectionRef, newService);
                 
-                appModal.showModal("Success", "Your service has been listed successfully!");
+                app.showAlert('Success', 'Your service has been listed successfully!');
                 app.closeModal('serviceModal');
                 
                 // Clear the form
                 document.getElementById('service-name').value = '';
-                document.getElementById('service-description').value = '';
-                document.getElementById('service-category').value = categories[1]; // Default back to Trades
-
+                document.getElementById('description').value = '';
+                
             } catch (e) {
-                console.error("Error adding document: ", e);
-                appModal.showModal("Submission Failed", `There was an error saving your service. Please try again. (Details in console)`, 'error');
+                console.error("Error saving document: ", e);
+                app.showAlert('Submission Failed', `Error: ${e.message}. Check console for details.`);
             }
         }
         
-        // --- Delete Service Logic ---
-        function confirmDeleteService(serviceId, serviceName) {
-            const message = `Are you sure you want to delete the service: <strong>${serviceName}</strong>? This action cannot be undone.`;
-            appModal.showModal(
-                "Confirm Deletion", 
-                message, 
-                'confirm', 
-                [
-                    { label: 'Cancel', callback: () => console.log('Delete cancelled') },
-                    { label: 'Delete', callback: () => deleteService(serviceId) }
-                ]
-            );
-        }
-
+        /** Handles service deletion */
         async function deleteService(serviceId) {
-            if (!auth.currentUser || currentUserId === 'NOT_AUTHENTICATED') {
-                appModal.showModal("Error", "You must be authenticated to delete a service.", 'error');
-                return;
+            if (!userId || !isAuthReady || userId === 'NOT_AUTHENTICATED') {
+                 app.showAlert('Error', 'You must be logged in to delete services.');
+                 return;
             }
-            
-            const collectionPath = `artifacts/${appId}/public/data/services`;
-            const docRef = doc(db, collectionPath, serviceId);
             
             try {
-                // The onSnapshot listener will handle UI update in real-time
-                await deleteDoc(docRef);
-                appModal.showModal("Deleted", "Service successfully removed.", 'alert');
+                const serviceDocRef = doc(db, `artifacts/${appId}/public/data/services`, serviceId);
+                // The actual security check is done by Firestore rules, but this is a good client-side safeguard
+                const docSnapshot = await getDoc(serviceDocRef);
+                
+                if (docSnapshot.exists() && docSnapshot.data().ownerId === userId) {
+                    await deleteDoc(serviceDocRef);
+                    app.showAlert('Deleted', 'Service successfully removed.');
+                } else {
+                    app.showAlert('Permission Denied', 'You can only delete services you have listed.');
+                }
             } catch (e) {
                 console.error("Error deleting document: ", e);
-                appModal.showModal("Error", `Could not delete the service: ${e.message}`, 'error');
+                app.showAlert('Error', `Could not delete the service. (Error: ${e.code})`);
             }
         }
 
-
-        // --- Exported App Functions for HTML Events ---
-        window.app = {
-            openModal: (id) => document.getElementById(id).classList.remove('hidden'),
-            closeModal: (id) => document.getElementById(id).classList.add('hidden'),
-            submitService,
-            confirmDeleteService,
-        };
-
-        // Initialize the app on window load
-        window.onload = function() {
-            initFirebaseApp();
-            setupCategoryTabs();
-        };
-
-    </script>
-
-    <div class="max-w-4xl mx-auto p-4 md:p-6">
+        // --- AUTHENTICATION & INITIALIZATION ---
         
-        <header class="bg-white p-6 rounded-xl shadow-xl text-center mb-6">
-            <h1 class="text-4xl font-extrabold text-primary-blue">Fiji Local Link</h1>
-            <p class="text-gray-500 text-sm mt-1">Connecting essential services in Fiji. (User ID: <span id="user-id" class="font-mono text-xs font-semibold text-fiji-blue tracking-wider">Loading...</span>)</p>
-        </header>
-
-        <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-md">
-            <p id="loading-message" class="text-lg font-semibold text-fiji-blue mb-3">Connecting to Database...</p>
-            <div class="flex justify-center items-center">
-                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </div>
-
-        <div id="content-area" class="hidden">
-            <div id="category-tabs" class="flex flex-wrap justify-start items-center space-x-2 md:space-x-6 bg-white rounded-xl shadow-md p-2 md:p-4 mb-6">
-                </div>
-
-            <div id="service-list" class="space-y-4 custom-scrollbar max-h-[70vh] overflow-y-auto">
-                </div>
-        </div>
-    </div>
-
-    <button onclick="app.openModal('serviceModal')" class="fixed bottom-6 right-6 p-4 rounded-full bg-primary-blue text-white shadow-lg hover:bg-blue-600 transition duration-150">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-        </svg>
-    </button>
-
-    <div id="serviceModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 modal-overlay hidden flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 relative transform transition-all duration-300 scale-100 opacity-100">
-            <button onclick="app.closeModal('serviceModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-            <h2 class="text-2xl font-bold text-primary-blue mb-6">List Your Essential Service</h2>
+        async function initFirebaseApp() {
             
-            <form onsubmit="app.submitService(event)">
-                <div class="mb-4">
-                    <label for="service-name" class="block text-sm font-medium text-gray-700 mb-1">Service Name/Business Title</label>
-                    <input type="text" id="service-name" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-primary-blue focus:border-primary-blue outline-none transition duration-150" placeholder="E.g., Ratu Electrical">
-                </div>
-
-                <div class="mb-4">
-                    <label for="service-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select id="service-category" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-primary-blue focus:border-primary-blue outline-none transition duration-150 appearance-none bg-white">
-                        <option value="Trades" selected>Trades (Plumbing, Electrical, Carpentry, etc.)</option>
-                        <option value="Food">Food (Takeaway, Restaurant, Catering)</option>
-                        <option value="Health">Health (Clinics, Pharmacy, Wellness)</option>
-                        <option value="Other">Other (General Services, Retail, etc.)</option>
-                    </select>
-                </div>
-
-                <div class="mb-6">
-                    <label for="service-description" class="block text-sm font-medium text-gray-700 mb-1">Description / Contact Details</label>
-                    <textarea id="service-description" required rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-primary-blue focus:border-primary-blue outline-none transition duration-150" placeholder="Describe your service and include a contact number or email."></textarea>
-                </div>
-
-                <button type="submit" class="w-full bg-secondary-green text-white font-bold py-3 rounded-xl hover:bg-green-700 transition duration-150 shadow-md">Submit Service</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="customAlert" class="fixed inset-0 bg-gray-900 bg-opacity-75 modal-overlay hidden flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="modal-content bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 relative transform transition-all duration-300 opacity-0 scale-90">
-            <h3 id="modal-title" class="text-xl font-bold text-primary-blue mb-4">Alert</h3>
-            <p id="modal-body" class="text-gray-600 mb-6"></p>
-            <div id="modal-buttons">
-                </div>
-        </div>
-    </div>
-    
-</body>
-</html>
+            $userIdDisplay.textContent = 'Authenticating...';
+            $loadingIndicator.classList.remove('hidden');
+            $contentArea.classList.add('hidden');
+            
+            try {
+                // Sign in logic
+                if (initialAuthToken && initialAuthToken !== 'null') {
+                    // Use Canvas Custom Token (for Canvas environment)
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Fallback to Anonymous Sign In (for public deployment)
+                    await signInAnonymously(auth);
+                }
+                
+                // Set up auth state change listener (This is where the app truly initializes)
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // Display a truncated ID for brevity in the UI
+                        $userIdDisplay.textContent = userId.substring(0, 15) + '...'; 
+                        isAuthReady = true;
+                        
+                        // Start listening for data once authenticated
+                        listenForServices(); 
+                        renderTabs();
+                        
+                        hideError(); 
+                        
+      
