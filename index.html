@@ -4,394 +4,405 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
-    
-    <!-- Load Tailwind CSS (required for styling) -->
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Inter font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
-    <!-- Load Phosphor Icons (for the plus button icon) -->
-    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/dist/p-icons.js"></script>
-    
-    <!-- Custom CSS Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for the + icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdL5v8f3lY3P7z7T9z/h8s5F7gKq8F2L5Tq5E0t9B1lVnF+D4Z7qQG3B8sCgLpGg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
+        /* Custom styles for aesthetics and scrollbar */
         :root {
             --primary-blue: #0A4AF1;
-            --fiji-blue: #0A4AF1;
-            --fiji-gold: #FFD700;
         }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f4f7f9;
+            background-color: #f0f4f8; /* Light gray background */
         }
-        .tab-active {
-            border-bottom: 3px solid var(--fiji-blue);
-            color: var(--fiji-blue);
+
+        /* Custom Modal for alerts/errors */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-content .title {
+            color: var(--primary-blue);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-content .message {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            color: #4b5563;
+        }
+
+        .modal-button {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
             font-weight: 600;
-            transition: transform 0.2s;
         }
-        .shadow-fiji {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(10, 74, 241, 0.4);
+
+        .modal-button:hover {
+            background-color: #083ac9;
         }
-        /* Custom scrollbar for better aesthetics */
+
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom scrollbar for better mobile feel */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(10, 74, 241, 0.4); /* fiji-blue semi-transparent */
+            background: rgba(16, 185, 129, 0.4); /* Tailwind emerald-500 semi-transparent */
             border-radius: 10px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
-        .like-btn:active {
-            transform: scale(0.95);
-            transition: transform 0.1s;
-        }
-        @layer utilities {
-          :root {
+        
+        /* Set primary-blue as a CSS variable for easier use in border/shadow/etc */
+        :root {
             --primary-blue: #0A4AF1;
-          }
         }
     </style>
 </head>
 <body class="min-h-screen">
 
-    <!-- I. Firebase SDK Imports (Compatibility Version) -->
-    <!-- These must load first to define the global 'firebase' object used by the inline script -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-
-    <!-- II. Application Container (HTML Layout) -->
-    <div class="max-w-xl mx-auto p-4 md:p-6">
+    <!-- Main App Container -->
+    <div id="app-container" class="max-w-md mx-auto p-4 bg-white shadow-xl min-h-screen">
+        
         <!-- Header Card -->
-        <header class="text-center p-6 bg-white rounded-xl shadow-lg border-t-4 border-fiji-blue">
-            <h1 class="text-4xl font-extrabold text-fiji-blue">Fiji Local Link</h1>
+        <div class="bg-white p-6 mb-4 rounded-xl shadow-lg border-t-4 border-blue-600">
+            <h1 class="text-3xl font-bold text-blue-700">Fiji Local Link</h1>
             <p class="text-sm text-gray-500 mt-1">Connecting essential services in Fiji.</p>
-            <p class="text-xs text-gray-400 mt-2">(User ID: <span id="user-id-display" class="font-mono">Loading...</span>)</p>
-        </header>
-
-        <!-- Loading Indicator -->
-        <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-md border-t-4 border-fiji-blue/50 mt-6">
-            <p class="text-lg font-semibold text-gray-700 mb-4">Connecting to Database...</p>
-            <div class="animate-spin h-8 w-8 border-4 border-fiji-blue border-r-transparent rounded-full mx-auto"></div>
+            <p id="user-id-display" class="text-xs text-gray-400 mt-2">
+                (User ID: Loading...)
+            </p>
         </div>
 
-        <!-- Content Area (Hidden until loaded) -->
-        <div id="content-area" class="mt-6 hidden">
-            <!-- Category Tabs -->
-            <div id="tabs-container" class="flex justify-between overflow-x-auto border-b border-gray-200 bg-white rounded-t-xl p-2 mb-4 sticky top-0 z-10 shadow-sm">
-                <!-- Tabs will be dynamically inserted here by JavaScript -->
-            </div>
+        <!-- Category Tabs -->
+        <div class="flex space-x-2 p-2 bg-gray-50 rounded-xl shadow-inner mb-4">
+            <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold transition-colors duration-200 bg-blue-600 text-white" data-category="All Services">All Services</button>
+            <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Trades">Trades</button>
+            <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Food">Food</button>
+            <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Health">Health</button>
+            <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Other">Other</button>
+        </div>
 
-            <!-- Services List -->
-            <div id="services-list-container" class="custom-scrollbar overflow-y-auto h-[70vh] p-2">
-                <!-- Service cards will be inserted here -->
+        <!-- Service List Container -->
+        <div id="service-list" class="space-y-4">
+            <!-- Services will be injected here -->
+            <div id="loading-indicator" class="text-center p-6 text-gray-500 bg-white rounded-xl shadow-md">
+                <p id="loading-message" class="font-medium text-lg mb-2">Connecting to Database...</p>
+                <div class="spinner mx-auto"></div>
             </div>
         </div>
-    </div>
 
-    <!-- III. Floating Action Button (FAB) for Adding Service -->
-    <button id="add-service-btn" class="fixed right-6 bottom-6 bg-fiji-blue hover:bg-fiji-blue/90 text-white p-4 rounded-full shadow-fiji transition duration-300 active:scale-95">
-        <i class="ph-bold ph-plus text-3xl"></i>
-    </button>
+        <!-- Add Service Button (Fixed Position) -->
+        <button id="add-service-btn" class="fixed bottom-6 right-6 lg:right-[calc(50vw-250px)] w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-2xl active:scale-95 transition transform duration-150 z-30">
+            <i class="fas fa-plus"></i>
+        </button>
 
-    <!-- IV. Add Service Modal -->
-    <div id="add-service-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300">
-        <div class="bg-white w-full max-w-md p-6 rounded-xl shadow-2xl relative">
-            <h2 class="text-2xl font-bold text-fiji-blue mb-4">List a New Service</h2>
-            <button type="button" onclick="closeAddServiceModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <i class="ph-bold ph-x text-xl"></i>
-            </button>
-            <form id="add-service-form" class="space-y-4">
-                <div>
-                    <label for="service-name" class="block text-sm font-medium text-gray-700">Service Name/Business Title</label>
-                    <input type="text" id="service-name" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., 4R Electrics">
-                </div>
-                <div>
-                    <label for="service-description" class="block text-sm font-medium text-gray-700">Description / Contact Details</label>
-                    <textarea id="service-description" rows="3" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., Electrical contractors, Ba, Fiji. Contact mobile 999 9999"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="service-category" class="block text-sm font-medium text-gray-700">Category</label>
-                        <select id="service-category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5">
-                            <!-- Options populated by JS -->
-                        </select>
+        <!-- Service Submission Modal (Hidden by default) -->
+        <div id="add-service-modal" class="custom-modal">
+            <div class="modal-content w-full max-w-sm">
+                <h2 class="text-xl font-bold text-blue-700 mb-4">List a New Service</h2>
+                <form id="add-service-form" class="space-y-4">
+                    <input type="text" id="service-name" placeholder="Service Name/Business Title" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    
+                    <select id="service-category" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                    
+                    <textarea id="service-description" placeholder="Description / Contact Details (e.g., '24/7 emergency electrical services. Contact mobile 999 9999')" rows="3" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
+                    
+                    <input type="text" id="service-location" placeholder="Location (e.g., Suva, Nadi)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancel-service-btn" class="p-3 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
+                        <button type="submit" id="submit-service-btn" class="p-3 px-6 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors active:scale-[0.98]">List Service</button>
                     </div>
-                    <div>
-                        <label for="service-location" class="block text-sm font-medium text-gray-700">Location (Optional)</label>
-                        <input type="text" id="service-location" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., Suva, Nadi">
-                    </div>
-                </div>
-                <div>
-                    <label for="service-contact" class="block text-sm font-medium text-gray-700">Contact Number (For Public)</label>
-                    <input type="tel" id="service-contact" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., 9999999">
-                </div>
-                <div class="flex justify-end pt-4">
-                    <button type="button" id="modal-cancel" onclick="closeAddServiceModal()" class="px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg mr-2">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition duration-150">
-                        Submit Service
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- V. Global Custom Modal (for errors and alerts) -->
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300">
-        <div class="bg-white w-full max-w-sm p-6 rounded-xl shadow-2xl relative">
-            <h2 id="modal-title" class="text-xl font-bold text-fiji-blue mb-4">Error</h2>
-            <p id="modal-message" class="text-gray-700 mb-6">Message content.</p>
-            <input type="text" id="modal-input" class="w-full border-gray-300 rounded-lg shadow-sm p-2 mb-4 hidden" placeholder="Enter value...">
-            <div class="flex justify-end">
-                <button id="modal-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg mr-2 hidden">Cancel</button>
-                <button id="modal-confirm-btn" class="px-4 py-2 bg-fiji-blue hover:bg-fiji-blue/90 text-white font-semibold rounded-lg shadow-md transition duration-150">Understood</button>
+                </form>
             </div>
-            <button id="modal-close-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <i class="ph-bold ph-x text-xl"></i>
-            </button>
         </div>
     </div>
     
-    <!-- VI. Application Logic (Bundled JavaScript) -->
-    <script>
-        // Set Firestore log level to debug for troubleshooting
-        // This relies on the firebase-firestore-compat.js script loading above
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-             firebase.firestore.setLogLevel('Debug');
-        }
-       
+    <!-- Custom Error/Alert Modal -->
+    <div id="alert-modal" class="custom-modal">
+        <div id="alert-content" class="modal-content">
+            <h3 id="alert-title" class="title text-red-600">Error</h3>
+            <p id="alert-message" class="message"></p>
+            <button id="alert-ok-btn" class="modal-button bg-red-600 hover:bg-red-700">Understood</button>
+        </div>
+    </div>
 
-        // --- Global Variables (will be populated by initFirebaseApp) ---
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, limit, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- Global Variables (MUST be used for environment setup) ---
+        let app;
         let db;
         let auth;
-        let _currentUserId = 'Loading...'; // Private variable for full ID
+        let currentUserId = 'Loading...';
         let isAuthReady = false;
 
-        // ** HARDCODED YOUR LIVE FIREBASE CONFIGURATION **
-        const firebaseConfig = {
-            apiKey: "AIzaSyCDKDZeYK3UT3Cuynda7HDzV9RQY-vDXh8",
-            authDomain: "fijilocallink.firebaseapp.com",
-            projectId: "fijilocallink",
-            storageBucket: "fijilocallink.appspot.com",
-            messagingSenderId: "246057187129",
-            appId: "1:246057187129:web:0ce25c1aa059b360badae8"
-        };
-
-        const appId = firebaseConfig.projectId;
-
+        // Mandatorily check and parse global variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
         // Service categories for filtering
         const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
         let currentCategory = 'All Services';
 
-        // --- CustomModal UI Class (Replaces alert/confirm) ---
-        class CustomModalUI {
-            constructor() {
-                this.modal = document.getElementById('custom-modal');
-                this.titleElement = document.getElementById('modal-title');
-                this.messageElement = document.getElementById('modal-message');
-                this.inputElement = document.getElementById('modal-input');
-                this.confirmButton = document.getElementById('modal-confirm-btn');
-                this.cancelButton = document.getElementById('modal-cancel-btn');
-                this.resolve = null;
-
-                // Check if elements exist before attaching listeners
-                if (document.getElementById('modal-close-btn')) {
-                    document.getElementById('modal-close-btn').addEventListener('click', () => this.hide());
-                }
-                if (this.cancelButton) {
-                    this.cancelButton.addEventListener('click', () => {
-                        if (this.resolve) this.resolve(false);
-                        this.hide();
-                    });
-                }
+        // --- Custom Modal UI Class (Replaces alert/confirm) ---
+        class CustomModal {
+            constructor(modalId) {
+                this.modal = document.getElementById(modalId);
+                this.titleElement = document.getElementById('alert-title');
+                this.messageElement = document.getElementById('alert-message');
+                this.okButton = document.getElementById('alert-ok-btn');
             }
 
-            show({ title, message, showInput = false, confirmText = 'Understood', cancelText = 'Cancel' }) {
+            // Function to display an alert/error
+            show(title, message, isError = true) {
+                this.titleElement.textContent = title;
+                this.messageElement.textContent = message;
+                
+                // Style the button/title based on whether it's an error
+                if (isError) {
+                    this.titleElement.classList.add('text-red-600');
+                    this.titleElement.classList.remove('text-blue-600');
+                    this.okButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                    this.okButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    this.titleElement.classList.add('text-blue-600');
+                    this.titleElement.classList.remove('text-red-600');
+                    this.okButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    this.okButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                }
+
                 return new Promise(resolve => {
-                    this.resolve = resolve;
-                    if (!this.modal) return resolve(false); // Failsafe if modal elements don't exist
-
-                    this.titleElement.textContent = title;
-                    this.messageElement.textContent = message;
-                    this.confirmButton.textContent = confirmText;
-                    this.cancelButton.textContent = cancelText;
-
-                    if (showInput) {
-                        this.inputElement.classList.remove('hidden');
-                        this.inputElement.value = ''; // Clear previous input
-                    } else {
-                        this.inputElement.classList.add('hidden');
-                    }
-
-                    this.confirmButton.onclick = () => {
-                        const result = showInput ? this.inputElement.value : true;
-                        if (this.resolve) this.resolve(result);
-                        this.hide();
+                    this.modal.style.display = 'flex';
+                    const clickHandler = () => {
+                        this.modal.style.display = 'none';
+                        this.okButton.removeEventListener('click', clickHandler);
+                        resolve(true);
                     };
-
-                    this.modal.classList.remove('hidden');
+                    this.okButton.addEventListener('click', clickHandler);
                 });
-            }
-
-            hide() {
-                if (this.modal) this.modal.classList.add('hidden');
             }
         }
-        let modalUI;
+        const modal = new CustomModal('alert-modal');
 
+        // --- Core Application Logic ---
 
-        /**
-         * Initializes Firebase app, handles authentication, and starts listening for data.
-         */
-        function initFirebaseApp() {
-            // Initialize modalUI here to ensure DOM elements exist
-            modalUI = new CustomModalUI(); 
-
-            // Check if Firebase compatibility scripts loaded successfully
-            if (typeof firebase === 'undefined') {
-                 const errorMessage = `Firebase SDK is not defined. Your environment is blocking the Firebase script links. Please check network settings.`;
-                 if (modalUI) {
-                    modalUI.show({ title: 'Critical SDK Load Error', message: errorMessage });
-                 }
-                 document.getElementById('user-id-display').textContent = 'SDK_BLOCKED';
-                 document.getElementById('loading-indicator').classList.add('hidden');
-                 return;
-            }
-
-
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                modalUI.show({ title: 'Critical Error', message: 'Firebase configuration missing. The app cannot start.' });
-                document.getElementById('user-id-display').textContent = 'CONFIG_MISSING';
-                document.getElementById('loading-indicator').classList.add('hidden');
-                return;
-            }
-
-            try {
-                // 1. Initialize App and Services (using compat global namespaces)
-                const firebaseApp = firebase.initializeApp(firebaseConfig);
-                db = firebase.firestore(firebaseApp);
-                auth = firebase.auth(firebaseApp);
-
-                // Check for Canvas-provided auth token
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                // 2. Setup Auth Listener and Initial Sign-in
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        _currentUserId = user.uid;
-                    } else {
-                        // This should ideally never run if sign-in succeeds
-                        _currentUserId = 'NOT_AUTHENTICATED';
-                    }
-
-                    // Update UI with truncated User ID
-                    document.getElementById('user-id-display').textContent = _currentUserId.substring(0, 10) + '...';
-
-                    if (!isAuthReady) {
-                        isAuthReady = true;
-                        // Only start listening for data after auth is ready
-                        listenForServices();
-                    }
-                });
-
-                // 3. Attempt Sign-in
-                // Use a self-executing async function for sign-in
-                (async () => {
-                    try {
-                        if (initialAuthToken) {
-                            // If Canvas provides a custom token, sign in with it
-                            await auth.signInWithCustomToken(initialAuthToken);
-                        } else {
-                            // Fallback: Sign in anonymously
-                            await auth.signInAnonymously();
-                        }
-                    } catch (e) {
-                        console.error("Authentication Error:", e);
-                        modalUI.show({ title: 'Auth Error', message: `Failed to sign in: ${e.message}` });
-                        document.getElementById('user-id-display').textContent = 'AUTH_FAILED';
-                    }
-                })();
-
-
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                const errorMessage = `Startup failed: ${error.message}. Please check your configuration and network.`;
-
-                if (modalUI) {
-                    modalUI.show({ title: 'Critical Configuration Error', message: errorMessage });
-                }
+        // Function to render the list of services
+        function renderServices(services) {
+            const listElement = document.getElementById('service-list');
             
-                document.getElementById('user-id-display').textContent = 'INIT_ERROR';
-                document.getElementById('loading-indicator').classList.add('hidden');
-            }
-        }
-
-        /**
-         * Sets up Firestore snapshot listener for services.
-         */
-        function listenForServices() {
-            if (!db || !isAuthReady) {
-                return;
+            // Remove the loading indicator
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
             }
 
-            // Public data path: /artifacts/fijilocallink/public/data/services
-            const collectionPath = `artifacts/${appId}/public/data/services`;
-            const servicesCollection = db.collection(collectionPath);
-
-            // Hide loading indicator and show the content area
-            document.getElementById('loading-indicator').classList.add('hidden');
-            document.getElementById('content-area').classList.remove('hidden');
-
-            // Listen for real-time updates
-            servicesCollection.onSnapshot((snapshot) => {
-                const services = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    services.push({ id: doc.id, ...data });
-                });
-                renderServices(services);
-            }, (error) => {
-                console.error("Error loading services:", error);
-                if (modalUI) {
-                    modalUI.show({ title: 'Data Error', message: 'Could not load services in real-time. Please check console for details.' });
-                }
-            });
-        }
-
-
-        /**
-         * Renders the services list based on the current category filter.
-         * @param {Array} allServices - The full list of services from Firestore.
-         */
-        function renderServices(allServices) {
-            const listContainer = document.getElementById('services-list-container');
-            listContainer.innerHTML = ''; // Clear previous services
-
-            const filteredServices = currentCategory === 'All Services'
-                ? allServices
-                : allServices.filter(service => service.category === currentCategory);
-
-            if (filteredServices.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="text-center p-8 text-gray-500 bg-white rounded-xl shadow-md border border-fiji-blue/10">
-                        <h3 class="text-xl font-semibold mb-2">No services found in this category.</h3>
-                        <p>Be the first to list a service!</p>
+            // Clear previous list content, but keep the container
+            listElement.innerHTML = '';
+            
+            if (services.length === 0) {
+                listElement.innerHTML = `
+                    <div class="text-center p-6 text-gray-600 bg-white rounded-xl shadow-md">
+                        <p class="font-bold text-lg mb-1">No services found in this category.</p>
+                        <p class="text-sm">Be the first to list a service!</p>
                     </div>
                 `;
                 return;
             }
 
-            filteredServices.forEach(service => {
-                // Ensure the likes array exists
-                const likes = Array.isArray(service.likes) ? service.likes : [];
-                const isLiked = likes.includes(_currentUserId);
-
-                const serviceCard = document.createElement('div');
-                serviceCard.className = 'service-card bg-white p-4 rounded-xl shadow-lg border-l-4 border-fiji-blue mb-4 transition duration-300 hover:shadow-xl';
-                serviceCard.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-xl font-extrabold text-fiji-blue">${service.name}</h3>
-                        <span class="text-xs font-bold text-white px-3 py-1 rounded-full ${getCategoryColorClass(service.category)}">${service.category}</span>
+            services.forEach(service => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow duration-200';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h2 class="text-xl font-bold text-gray-800">${service.name}</h2>
+                        <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${service.category === 'Food' ? 'bg-orange-200 text-orange-800' : service.category === 'Health' ? 'bg-red-200 text-red-800' : service.category === 'Trades' ? 'bg-sky-200 text-sky-800' : 'bg-gray-200 text-gray-800'}">
+                            ${service.category}
+                        </span>
                     </div>
-                    <p class="text-gray-700 mb-3">${service.description}</p>
-                    <div class="text-sm text-gray-600 mb-4">
-                        <p class="mb-1">Listed by: <span class="font-medium">${service.listedBy || 'Unknown User'}</span
+                    <p class="text-sm text-gray-600 mt-2 whitespace-pre-wrap">${service.description}</p>
+                    <div class="mt-3 text-xs text-gray-400 border-t pt-2">
+                        <span class="font-medium">Listed by:</span> ${service.listedBy || 'Anonymous'}
+                        <span class="float-right text-blue-500 font-semibold">${service.location}</span>
+                    </div>
+                `;
+                listElement.appendChild(card);
+            });
+        }
+
+        // Sets up the real-time listener for the services collection
+        function listenForServices() {
+            if (!isAuthReady) return; // Should not happen if called from onAuthStateChanged
+            
+            const listElement = document.getElementById('service-list');
+            listElement.innerHTML = `
+                <div id="loading-indicator" class="text-center p-6 text-gray-500 bg-white rounded-xl shadow-md">
+                    <p id="loading-message" class="font-medium text-lg mb-2">Loading ${currentCategory} services...</p>
+                    <div class="spinner mx-auto"></div>
+                </div>
+            `;
+            
+            const collectionRef = collection(db, 'artifacts', appId, 'public/data/services');
+            let q = query(collectionRef);
+            
+            if (currentCategory !== 'All Services') {
+                // Add a filter if a specific category is selected
+                q = query(collectionRef, where('category', '==', currentCategory));
+            }
+            
+            // onSnapshot provides real-time updates and also handles the initial data load
+            onSnapshot(q, (snapshot) => {
+                const services = [];
+                snapshot.forEach(doc => {
+                    services.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Sort the services by the timestamp in descending order (newest first)
+                services.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+                renderServices(services);
+            }, (error) => {
+                // The error now should be handled by the modal for clarity
+                console.error("Error fetching real-time services:", error);
+                modal.show("Data Error", `Could not load services in real-time. Check the browser console for details: ${error.message}`);
+                // Ensure UI reflects the failure if no data was loaded
+                if (listElement.querySelector('#loading-indicator')) {
+                    listElement.innerHTML = `<div class="text-center p-6 text-red-500 bg-red-50 border border-red-200 rounded-xl shadow-md">
+                        <p class="font-bold text-lg mb-1">Failed to Load Data</p>
+                        <p class="text-sm">Please check the console for permission errors or try refreshing.</p>
+                    </div>`;
+                }
+            });
+        }
+
+        // Initialises Firebase and sets up the authentication state listener
+        async function initFirebaseApp() {
+            // Check for critical configuration
+            if (!firebaseConfig) {
+                document.getElementById('user-id-display').textContent = '(User ID: INIT_ERROR)';
+                modal.show("Critical Configuration Error", "Firebase configuration missing. The application cannot start. Please ensure the required global variables are set.");
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // Enable debug logging for troubleshooting
+
+                // --- 1. Setup Auth Listener (Crucial for state management) ---
+                // This listener runs whenever the user's sign-in state changes (including initial load)
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                    } else {
+                        // After sign-in attempt fails or before a successful one
+                        currentUserId = 'NOT_AUTHENTICATED';
+                    }
+
+                    // Update UI with new userId
+                    document.getElementById('user-id-display').textContent = `(User ID: ${currentUserId.substring(0, 10)}...)`;
+
+                    // This block ensures data fetching starts only once after the initial auth state is confirmed
+                    if (!isAuthReady) {
+                        isAuthReady = true;
+                        listenForServices();
+                    }
+                });
+
+                // --- 2. Attempt Sign In (start the auth flow) ---
+                // The onAuthStateChanged listener above will finalize the state.
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken).catch(error => {
+                        console.error("Custom token sign-in failed. Attempting anonymous sign-in.", error);
+                        // If custom token fails, proceed to anonymous sign-in
+                        return signInAnonymously(auth);
+                    });
+                } else {
+                    // If no custom token is available, sign in anonymously
+                    await signInAnonymously(auth);
+                }
+
+            } catch (e) {
+                // Catch errors during initializeApp or unexpected auth failures
+                console.error("Firebase Initialization Error:", e);
+                const errorMessage = `Startup failed: Firebase: Error (${e.code || e.message}). The app cannot connect to the database.`;
+                modal.show("Critical Configuration Error", errorMessage);
+                currentUserId = 'INIT_ERROR';
+                document.getElementById('user-id-display').textContent = `(User ID: ${currentUserId})`;
+            }
+        }
+
+
+        // --- Event Listeners and Helpers ---
+
+        function handleServiceSubmission(event) {
+            event.preventDefault();
+
+            if (!isAuthReady || !db || !auth.currentUser) {
+                modal.show("Authentication Required", "Please wait for the app to connect or sign in before listing a service.");
+                return;
+            }
+
+            const name = document.getElementById('service-name').value.trim();
+            const category = document.getElementById('service-category').value;
+            const description = document.getElementById('service-description').value.trim();
+            const location = document.getElementById('service-location').value.trim();
+
+            if (!name || !category || !description || !location) {
+                modal.show("Input Error", "All fields must be filled out.", false);
+            
