@@ -51,25 +51,25 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- I. Firebase SDK Imports (must be type="module") -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- I. Firebase SDK Imports (Using standard script tags for maximum compatibility) -->
+    <!-- Load Firebase App, Auth, and Firestore globally -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
+    <!-- II. Application Script -->
+    <script>
         // Set Firestore log level to debug for troubleshooting
-        setLogLevel('Debug');
+        firebase.firestore.setLogLevel('Debug');
 
-        // --- Global Variables (MUST be used for environment setup) ---
-        let app;
+        // --- Global Variables (will be populated by initFirebaseApp) ---
         let db;
         let auth;
-        let currentUserId = 'Loading...';
+        let _currentUserId = 'Loading...'; // Private variable for full ID
         let isAuthReady = false;
 
-        // YOUR ACTUAL LIVE FIREBASE CONFIGURATION (Retrieved from your Firebase Console)
-        // ** THIS IS THE FIX **: If the app is run outside the Canvas environment, this config is used.
-        const LIVE_FIREBASE_CONFIG = {
+        // ** HARDCODED YOUR LIVE FIREBASE CONFIGURATION **
+        const firebaseConfig = {
             apiKey: "AIzaSyCDKDZeYK3UT3Cuynda7HDzV9RQY-vDXh8",
             authDomain: "fijilocallink.firebaseapp.com",
             projectId: "fijilocallink",
@@ -77,23 +77,8 @@
             messagingSenderId: "246057187129",
             appId: "1:246057187129:web:0ce25c1aa059b360badae8"
         };
-
-        // Determine the runtime configuration and auth token.
-        // If running in the Canvas environment (where global variables are present), use them.
-        const isCanvasEnvironment = typeof __firebase_config !== 'undefined';
-
-        const firebaseConfig = isCanvasEnvironment
-            ? JSON.parse(__firebase_config)
-            : LIVE_FIREBASE_CONFIG; // <-- FIX: Use your live config when running outside Canvas.
-
-        const initialAuthToken = isCanvasEnvironment
-            ? __initial_auth_token
-            : null; // External sites don't use the custom token auth flow
-
-        const appId = isCanvasEnvironment
-            ? __app_id
-            : LIVE_FIREBASE_CONFIG.appId; // Use the config appId for the artifact path
-
+        
+        const appId = firebaseConfig.projectId;
 
         // Service categories for filtering
         const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
@@ -110,16 +95,23 @@
                 this.cancelButton = document.getElementById('modal-cancel-btn');
                 this.resolve = null;
 
-                document.getElementById('modal-close-btn').addEventListener('click', () => this.hide());
-                this.cancelButton.addEventListener('click', () => {
-                    if (this.resolve) this.resolve(false);
-                    this.hide();
-                });
+                // Check if elements exist before attaching listeners
+                if (document.getElementById('modal-close-btn')) {
+                    document.getElementById('modal-close-btn').addEventListener('click', () => this.hide());
+                }
+                if (this.cancelButton) {
+                    this.cancelButton.addEventListener('click', () => {
+                        if (this.resolve) this.resolve(false);
+                        this.hide();
+                    });
+                }
             }
 
             show({ title, message, showInput = false, confirmText = 'Understood', cancelText = 'Cancel' }) {
                 return new Promise(resolve => {
                     this.resolve = resolve;
+                    if (!this.modal) return resolve(false); // Failsafe if modal elements don't exist
+
                     this.titleElement.textContent = title;
                     this.messageElement.textContent = message;
                     this.confirmButton.textContent = confirmText;
@@ -143,16 +135,19 @@
             }
 
             hide() {
-                this.modal.classList.add('hidden');
+                if (this.modal) this.modal.classList.add('hidden');
             }
         }
-        const modalUI = new CustomModalUI();
+        let modalUI;
 
 
         /**
          * Initializes Firebase app, handles authentication, and starts listening for data.
          */
-        async function initFirebaseApp() {
+        function initFirebaseApp() {
+            // Initialize modalUI here to ensure DOM elements exist
+            modalUI = new CustomModalUI(); 
+
             if (!firebaseConfig || !firebaseConfig.apiKey) {
                 modalUI.show({ title: 'Critical Error', message: 'Firebase configuration missing. The app cannot start.' });
                 document.getElementById('user-id-display').textContent = 'CONFIG_MISSING';
@@ -161,26 +156,25 @@
             }
 
             try {
-                // 1. Initialize App and Services
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                // 1. Initialize App and Services (using compat global namespaces)
+                const firebaseApp = firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore(firebaseApp);
+                auth = firebase.auth(firebaseApp);
+
+                // Check for Canvas-provided auth token
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
                 // 2. Setup Auth Listener and Initial Sign-in
-                onAuthStateChanged(auth, async (user) => {
-                    // This listener runs immediately on load and then on every auth change (sign in/out)
-
+                auth.onAuthStateChanged(async (user) => {
                     if (user) {
-                        currentUserId = user.uid;
+                        _currentUserId = user.uid;
                     } else {
-                        // Sign in attempt failed, or user signed out.
-                        currentUserId = 'NOT_AUTHENTICATED';
+                        _currentUserId = 'NOT_AUTHENTICATED';
                     }
 
                     // Update UI with truncated User ID
-                    document.getElementById('user-id-display').textContent = currentUserId.substring(0, 10) + '...';
+                    document.getElementById('user-id-display').textContent = _currentUserId.substring(0, 10) + '...';
 
-                    // We are ready to fetch data only after the initial auth state is resolved.
                     if (!isAuthReady) {
                         isAuthReady = true;
                         // Only start listening for data after auth is ready
@@ -189,16 +183,25 @@
                 });
 
                 // 3. Attempt Sign-in
-                // If running in the Canvas environment, use the custom token.
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // For live deployments (GitHub Pages), sign in anonymously.
-                    await signInAnonymously(auth);
-                }
+                // Use a self-executing async function for sign-in
+                (async () => {
+                    if (initialAuthToken) {
+                        await auth.signInWithCustomToken(initialAuthToken);
+                    } else {
+                        // For live deployments (GitHub Pages), sign in anonymously.
+                        await auth.signInAnonymously();
+                    }
+                })();
+
+
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                modalUI.show({ title: 'Critical Configuration Error', message: `Startup failed: Firebase: ${error.message}. The app cannot connect to the database. (If you are running this on your own site, ensure your API key and configuration are correct.)` });
+                const errorMessage = `Startup failed: ${error.message}. Please check your configuration and network.`;
+
+                if (modalUI) {
+                     modalUI.show({ title: 'Critical Configuration Error', message: errorMessage });
+                }
+               
                 document.getElementById('user-id-display').textContent = 'INIT_ERROR';
                 document.getElementById('loading-indicator').classList.add('hidden');
             }
@@ -209,20 +212,19 @@
          */
         function listenForServices() {
             if (!db || !isAuthReady) {
-                // Should not happen if initFirebaseApp runs correctly
                 return;
             }
 
-            // Public data path: /artifacts/{appId}/public/data/services
-            const collectionPath = `/artifacts/${appId}/public/data/services`;
-            const servicesCollection = collection(db, collectionPath);
+            // Public data path: /artifacts/fijilocallink/public/data/services
+            const collectionPath = `artifacts/${appId}/public/data/services`;
+            const servicesCollection = db.collection(collectionPath);
 
             // Hide loading indicator and show the content area
             document.getElementById('loading-indicator').classList.add('hidden');
             document.getElementById('content-area').classList.remove('hidden');
 
             // Listen for real-time updates
-            onSnapshot(servicesCollection, (snapshot) => {
+            servicesCollection.onSnapshot((snapshot) => {
                 const services = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -231,7 +233,9 @@
                 renderServices(services);
             }, (error) => {
                 console.error("Error loading services:", error);
-                modalUI.show({ title: 'Data Error', message: 'Could not load services in real-time. Please check console for details.' });
+                if (modalUI) {
+                    modalUI.show({ title: 'Data Error', message: 'Could not load services in real-time. Please check console for details.' });
+                }
             });
         }
 
@@ -261,7 +265,7 @@
             filteredServices.forEach(service => {
                 // Ensure the likes array exists
                 const likes = Array.isArray(service.likes) ? service.likes : [];
-                const isLiked = likes.includes(currentUserId);
+                const isLiked = likes.includes(_currentUserId);
 
                 const serviceCard = document.createElement('div');
                 serviceCard.className = 'service-card bg-white p-4 rounded-xl shadow-lg border-l-4 border-fiji-blue mb-4 transition duration-300 hover:shadow-xl';
@@ -299,9 +303,9 @@
         function getCategoryColorClass(category) {
             switch (category) {
                 case 'Trades': return 'bg-orange-500';
-                case 'Food': return 'bg-green-500';
-                case 'Health': return 'bg-purple-500';
-                case 'Other': return 'bg-yellow-500';
+                case 'Food': return 'bg-green-600';
+                case 'Health': return 'bg-purple-600';
+                case 'Other': return 'bg-yellow-600';
                 default: return 'bg-gray-500';
             }
         }
@@ -314,22 +318,31 @@
          * @param {Array<string>} likesArray - The current list of user IDs who liked the service.
          */
         async function toggleLike(serviceId, isCurrentlyLiked, likesArray) {
-             if (!isAuthReady || !db || currentUserId === 'NOT_AUTHENTICATED' || currentUserId === 'INIT_ERROR') {
-                modalUI.show({ title: 'Authentication Required', message: 'You must be authenticated to like a service. The app is currently signing you in anonymously.' });
+             if (!isAuthReady || !db || _currentUserId === 'NOT_AUTHENTICATED' || _currentUserId === 'INIT_ERROR') {
+                if (modalUI) {
+                    modalUI.show({ title: 'Authentication Required', message: 'You must be authenticated to like a service. Please wait for initialization.' });
+                }
                 return;
             }
 
-            const docRef = doc(db, `/artifacts/${appId}/public/data/services`, serviceId);
-            const updateAction = isCurrentlyLiked ? arrayRemove(currentUserId) : arrayUnion(currentUserId);
+            // Public data path: /artifacts/{appId}/public/data/services/{serviceId}
+            const docRef = db.collection(`artifacts/${appId}/public/data/services`).doc(serviceId);
+            
+            // Use FieldValue.arrayUnion/arrayRemove from the global Firebase namespace
+            const updateAction = isCurrentlyLiked 
+                ? firebase.firestore.FieldValue.arrayRemove(_currentUserId) 
+                : firebase.firestore.FieldValue.arrayUnion(_currentUserId);
 
             try {
-                await updateDoc(docRef, {
+                await docRef.update({
                     likes: updateAction
                 });
                 // The onSnapshot listener will automatically update the UI
             } catch (error) {
                 console.error("Error toggling like:", error);
-                modalUI.show({ title: 'Error Liking Service', message: 'Could not update like status. Please check your connection.' });
+                if (modalUI) {
+                    modalUI.show({ title: 'Error Liking Service', message: 'Could not update like status. Please check your connection.' });
+                }
             }
         }
 
@@ -358,9 +371,7 @@
                     });
                     button.classList.add('tab-active');
 
-                    // Trigger re-render (since allServices is available via closure of listenForServices)
-                    // We don't need to re-fetch, we just need to re-filter and re-render the list.
-                    // The onSnapshot listener will handle the re-render automatically when it fetches the data.
+                    // No need to explicitly call renderServices, as onSnapshot handles updates
                 });
                 tabsContainer.appendChild(button);
             });
@@ -370,8 +381,10 @@
          * Opens the modal for adding a new service.
          */
         function openAddServiceModal() {
-            if (!isAuthReady || currentUserId === 'NOT_AUTHENTICATED' || currentUserId === 'INIT_ERROR') {
-                modalUI.show({ title: 'Authentication Required', message: 'The app is still connecting to the database or could not authenticate. Please wait a moment.' });
+            if (!isAuthReady || _currentUserId === 'NOT_AUTHENTICATED' || _currentUserId === 'INIT_ERROR') {
+                if (modalUI) {
+                    modalUI.show({ title: 'Authentication Required', message: 'The app is still connecting to the database or could not authenticate. Please wait a moment.' });
+                }
                 return;
             }
 
@@ -400,7 +413,9 @@
             const contact = document.getElementById('service-contact').value.trim();
 
             if (!name || !description || !contact) {
-                modalUI.show({ title: 'Missing Information', message: 'Please fill in the Service Name, Description/Contact Details, and Contact Number.' });
+                if (modalUI) {
+                    modalUI.show({ title: 'Missing Information', message: 'Please fill in the Service Name, Description/Contact Details, and Contact Number.' });
+                }
                 return;
             }
 
@@ -412,19 +427,22 @@
                 category,
                 location,
                 contact,
-                listedBy: currentUserId.substring(0, 7) + '...', // Store a shortened, public ID for display
+                listedBy: _currentUserId.substring(0, 7) + '...', // Store a shortened, public ID for display
                 listedAt: Date.now(),
                 likes: [], // Initialize with an empty array of user IDs
-                userId: currentUserId // Store the full ID for filtering/management (private)
+                userId: _currentUserId // Store the full ID for filtering/management (private)
             };
 
             try {
                 // Public data path: /artifacts/{appId}/public/data/services
-                const collectionPath = `/artifacts/${appId}/public/data/services`;
-                await addDoc(collection(db, collectionPath), newService);
+                const collectionPath = `artifacts/${appId}/public/data/services`;
+                await db.collection(collectionPath).add(newService);
 
                 closeAddServiceModal();
-                modalUI.show({ title: 'Success!', message: 'Your service has been listed and is now visible to everyone!' });
+                if (modalUI) {
+                    modalUI.show({ title: 'Success!', message: 'Your service has been listed and is now visible to everyone!' });
+                }
             } catch (error) {
                 console.error("Error adding service:", error);
-                modalUI.show({ 
+                if (modalUI) {
+                    modalUI.show({ title: 'Submission Failed', message: `There was an er
