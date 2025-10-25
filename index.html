@@ -123,6 +123,7 @@
 
         <!-- Category Tabs -->
         <div class="flex space-x-2 p-2 bg-gray-50 rounded-xl shadow-inner mb-4">
+            <!-- Note: The 'All Services' button starts active -->
             <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold transition-colors duration-200 bg-blue-600 text-white" data-category="All Services">All Services</button>
             <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Trades">Trades</button>
             <button class="tab-button p-2 flex-1 rounded-lg text-sm font-semibold text-gray-600 hover:bg-white transition-colors duration-200" data-category="Food">Food</button>
@@ -149,15 +150,15 @@
             <div class="modal-content w-full max-w-sm">
                 <h2 class="text-xl font-bold text-blue-700 mb-4">List a New Service</h2>
                 <form id="add-service-form" class="space-y-4">
-                    <input type="text" id="service-name" placeholder="Service Name/Business Title" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <input type="text" id="service-name" placeholder="Service Name/Business Title" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" maxlength="100">
                     
                     <select id="service-category" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
                         <!-- Options will be populated by JS -->
                     </select>
                     
-                    <textarea id="service-description" placeholder="Description / Contact Details (e.g., '24/7 emergency electrical services. Contact mobile 999 9999')" rows="3" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
+                    <textarea id="service-description" placeholder="Description / Contact Details (e.g., '24/7 emergency electrical services. Contact mobile 999 9999')" rows="3" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none" maxlength="500"></textarea>
                     
-                    <input type="text" id="service-location" placeholder="Location (e.g., Suva, Nadi)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <input type="text" id="service-location" placeholder="Location (e.g., Suva, Nadi)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" maxlength="100">
 
                     <div class="flex justify-end space-x-4">
                         <button type="button" id="cancel-service-btn" class="p-3 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
@@ -181,7 +182,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, limit, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Global Variables (MUST be used for environment setup) ---
         let app;
@@ -195,7 +196,7 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Service categories for filtering
+        // Service categories for filtering (Note: 'All Services' is only for display/filtering, not for saving)
         const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
         let currentCategory = 'All Services';
 
@@ -241,6 +242,22 @@
 
         // --- Core Application Logic ---
 
+        /** Formats a Firestore Timestamp or Date object for display */
+        function formatTimestamp(timestamp) {
+            if (timestamp && timestamp.toDate) {
+                return timestamp.toDate().toLocaleString('en-FJ', { 
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                });
+            }
+            // Handle non-timestamp objects (e.g., when sorting)
+            if (timestamp instanceof Date) {
+                 return timestamp.toLocaleString('en-FJ', { 
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                });
+            }
+            return 'Time unknown';
+        }
+
         // Function to render the list of services
         function renderServices(services) {
             const listElement = document.getElementById('service-list');
@@ -250,6 +267,12 @@
             if (loadingIndicator) {
                 loadingIndicator.remove();
             }
+
+            // Sort the services by the timestamp in descending order (newest first)
+            // Note: The timestamp stored in Firestore (serverTimestamp()) is used for sorting.
+            // We use .seconds because firestore-js SDK converts it to a Timestamp object.
+            services.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
 
             // Clear previous list content, but keep the container
             listElement.innerHTML = '';
@@ -275,9 +298,12 @@
                         </span>
                     </div>
                     <p class="text-sm text-gray-600 mt-2 whitespace-pre-wrap">${service.description}</p>
-                    <div class="mt-3 text-xs text-gray-400 border-t pt-2">
-                        <span class="font-medium">Listed by:</span> ${service.listedBy || 'Anonymous'}
-                        <span class="float-right text-blue-500 font-semibold">${service.location}</span>
+                    <div class="mt-3 text-xs text-gray-400 border-t pt-2 flex justify-between">
+                        <div>
+                            <span class="font-medium">Listed by:</span> ${service.userId === currentUserId ? 'You' : `User ${service.userId.substring(0, 4)}...`}
+                            <span class="ml-2"> | ${formatTimestamp(service.timestamp)}</span>
+                        </div>
+                        <span class="text-blue-500 font-semibold">${service.location}</span>
                     </div>
                 `;
                 listElement.appendChild(card);
@@ -286,7 +312,7 @@
 
         // Sets up the real-time listener for the services collection
         function listenForServices() {
-            if (!isAuthReady) return; // Should not happen if called from onAuthStateChanged
+            if (!isAuthReady || !db) return; 
             
             const listElement = document.getElementById('service-list');
             listElement.innerHTML = `
@@ -297,11 +323,13 @@
             `;
             
             const collectionRef = collection(db, 'artifacts', appId, 'public/data/services');
-            let q = query(collectionRef);
+            let q;
             
             if (currentCategory !== 'All Services') {
                 // Add a filter if a specific category is selected
                 q = query(collectionRef, where('category', '==', currentCategory));
+            } else {
+                q = query(collectionRef);
             }
             
             // onSnapshot provides real-time updates and also handles the initial data load
@@ -310,91 +338,26 @@
                 snapshot.forEach(doc => {
                     services.push({ id: doc.id, ...doc.data() });
                 });
-                
-                // Sort the services by the timestamp in descending order (newest first)
-                services.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
                 renderServices(services);
             }, (error) => {
                 // The error now should be handled by the modal for clarity
                 console.error("Error fetching real-time services:", error);
-                modal.show("Data Error", `Could not load services in real-time. Check the browser console for details: ${error.message}`);
+                modal.show("Data Error", `Could not load services. Please check the console.`);
                 // Ensure UI reflects the failure if no data was loaded
-                if (listElement.querySelector('#loading-indicator')) {
-                    listElement.innerHTML = `<div class="text-center p-6 text-red-500 bg-red-50 border border-red-200 rounded-xl shadow-md">
-                        <p class="font-bold text-lg mb-1">Failed to Load Data</p>
-                        <p class="text-sm">Please check the console for permission errors or try refreshing.</p>
-                    </div>`;
-                }
+                listElement.innerHTML = `<div class="text-center p-6 text-red-500 bg-red-50 border border-red-200 rounded-xl shadow-md">
+                    <p class="font-bold text-lg mb-1">Failed to Load Data</p>
+                    <p class="text-sm">Please check the console for permission errors or try refreshing.</p>
+                </div>`;
             });
         }
 
-        // Initialises Firebase and sets up the authentication state listener
-        async function initFirebaseApp() {
-            // Check for critical configuration
-            if (!firebaseConfig) {
-                document.getElementById('user-id-display').textContent = '(User ID: INIT_ERROR)';
-                modal.show("Critical Configuration Error", "Firebase configuration missing. The application cannot start. Please ensure the required global variables are set.");
-                return;
-            }
-
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('debug'); // Enable debug logging for troubleshooting
-
-                // --- 1. Setup Auth Listener (Crucial for state management) ---
-                // This listener runs whenever the user's sign-in state changes (including initial load)
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                    } else {
-                        // After sign-in attempt fails or before a successful one
-                        currentUserId = 'NOT_AUTHENTICATED';
-                    }
-
-                    // Update UI with new userId
-                    document.getElementById('user-id-display').textContent = `(User ID: ${currentUserId.substring(0, 10)}...)`;
-
-                    // This block ensures data fetching starts only once after the initial auth state is confirmed
-                    if (!isAuthReady) {
-                        isAuthReady = true;
-                        listenForServices();
-                    }
-                });
-
-                // --- 2. Attempt Sign In (start the auth flow) ---
-                // The onAuthStateChanged listener above will finalize the state.
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken).catch(error => {
-                        console.error("Custom token sign-in failed. Attempting anonymous sign-in.", error);
-                        // If custom token fails, proceed to anonymous sign-in
-                        return signInAnonymously(auth);
-                    });
-                } else {
-                    // If no custom token is available, sign in anonymously
-                    await signInAnonymously(auth);
-                }
-
-            } catch (e) {
-                // Catch errors during initializeApp or unexpected auth failures
-                console.error("Firebase Initialization Error:", e);
-                const errorMessage = `Startup failed: Firebase: Error (${e.code || e.message}). The app cannot connect to the database.`;
-                modal.show("Critical Configuration Error", errorMessage);
-                currentUserId = 'INIT_ERROR';
-                document.getElementById('user-id-display').textContent = `(User ID: ${currentUserId})`;
-            }
-        }
-
-
-        // --- Event Listeners and Helpers ---
-
-        function handleServiceSubmission(event) {
+        // Handles the submission of a new service
+        async function handleServiceSubmission(event) {
             event.preventDefault();
 
             if (!isAuthReady || !db || !auth.currentUser) {
-                modal.show("Authentication Required", "Please wait for the app to connect or sign in before listing a service.");
+                modal.show("Authentication Required", "Please wait for the app to connect before listing a service.");
                 return;
             }
 
@@ -405,4 +368,46 @@
 
             if (!name || !category || !description || !location) {
                 modal.show("Input Error", "All fields must be filled out.", false);
-            
+                return; 
+            }
+
+            const submitBtn = document.getElementById('submit-service-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Listing...';
+
+            try {
+                // Public Collection Path: /artifacts/{appId}/public/data/services
+                const collectionRef = collection(db, 'artifacts', appId, 'public/data/services');
+
+                await addDoc(collectionRef, {
+                    name: name,
+                    category: category,
+                    description: description,
+                    location: location,
+                    userId: currentUserId,
+                    timestamp: serverTimestamp() // Use server time for accurate sorting
+                });
+
+                // Success
+                document.getElementById('add-service-form').reset();
+                document.getElementById('add-service-modal').style.display = 'none';
+                modal.show("Success!", "Your service has been successfully listed!", false);
+
+            } catch (error) {
+                console.error("Error adding document:", error);
+                modal.show("Post Failed", "Could not list service due to a database error. Check the console for details.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'List Service';
+            }
+        }
+
+        // Sets up all UI-related event listeners
+        function setupEventListeners() {
+            // 1. Service Submission Modal Handlers
+            document.getElementById('add-service-btn').addEventListener('click', () => {
+                if (!isAuthReady) {
+                     modal.show("Connecting", "Please wait until the app is fully connected before adding a service.", false);
+                     return;
+                }
+                document.getElementById('add-service-modal').style.dis
