@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
-    <!-- Load Tailwind CSS -->
+    
+    <!-- Load Tailwind CSS (required for styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Inter font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <!-- Load Phosphor Icons (for the plus button icon) -->
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/dist/p-icons.js"></script>
+    
+    <!-- Custom CSS Styles -->
     <style>
         :root {
             --primary-blue: #0A4AF1;
@@ -41,7 +44,6 @@
             transform: scale(0.95);
             transition: transform 0.1s;
         }
-        /* Set primary-blue as a CSS variable for easier use in border/shadows */
         @layer utilities {
           :root {
             --primary-blue: #0A4AF1;
@@ -51,16 +53,112 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- I. Firebase SDK Imports (Using standard script tags for maximum compatibility) -->
-    <!-- Load Firebase App, Auth, and Firestore globally -->
+    <!-- I. Firebase SDK Imports (Compatibility Version) -->
+    <!-- These must load first to define the global 'firebase' object used by the inline script -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
-    <!-- II. Application Script -->
+    <!-- II. Application Container (HTML Layout) -->
+    <div class="max-w-xl mx-auto p-4 md:p-6">
+        <!-- Header Card -->
+        <header class="text-center p-6 bg-white rounded-xl shadow-lg border-t-4 border-fiji-blue">
+            <h1 class="text-4xl font-extrabold text-fiji-blue">Fiji Local Link</h1>
+            <p class="text-sm text-gray-500 mt-1">Connecting essential services in Fiji.</p>
+            <p class="text-xs text-gray-400 mt-2">(User ID: <span id="user-id-display" class="font-mono">Loading...</span>)</p>
+        </header>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8 bg-white rounded-xl shadow-md border-t-4 border-fiji-blue/50 mt-6">
+            <p class="text-lg font-semibold text-gray-700 mb-4">Connecting to Database...</p>
+            <div class="animate-spin h-8 w-8 border-4 border-fiji-blue border-r-transparent rounded-full mx-auto"></div>
+        </div>
+
+        <!-- Content Area (Hidden until loaded) -->
+        <div id="content-area" class="mt-6 hidden">
+            <!-- Category Tabs -->
+            <div id="tabs-container" class="flex justify-between overflow-x-auto border-b border-gray-200 bg-white rounded-t-xl p-2 mb-4 sticky top-0 z-10 shadow-sm">
+                <!-- Tabs will be dynamically inserted here by JavaScript -->
+            </div>
+
+            <!-- Services List -->
+            <div id="services-list-container" class="custom-scrollbar overflow-y-auto h-[70vh] p-2">
+                <!-- Service cards will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- III. Floating Action Button (FAB) for Adding Service -->
+    <button id="add-service-btn" class="fixed right-6 bottom-6 bg-fiji-blue hover:bg-fiji-blue/90 text-white p-4 rounded-full shadow-fiji transition duration-300 active:scale-95">
+        <i class="ph-bold ph-plus text-3xl"></i>
+    </button>
+
+    <!-- IV. Add Service Modal -->
+    <div id="add-service-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md p-6 rounded-xl shadow-2xl relative">
+            <h2 class="text-2xl font-bold text-fiji-blue mb-4">List a New Service</h2>
+            <button type="button" onclick="closeAddServiceModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+            <form id="add-service-form" class="space-y-4">
+                <div>
+                    <label for="service-name" class="block text-sm font-medium text-gray-700">Service Name/Business Title</label>
+                    <input type="text" id="service-name" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., 4R Electrics">
+                </div>
+                <div>
+                    <label for="service-description" class="block text-sm font-medium text-gray-700">Description / Contact Details</label>
+                    <textarea id="service-description" rows="3" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., Electrical contractors, Ba, Fiji. Contact mobile 999 9999"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="service-category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select id="service-category" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-location" class="block text-sm font-medium text-gray-700">Location (Optional)</label>
+                        <input type="text" id="service-location" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., Suva, Nadi">
+                    </div>
+                </div>
+                <div>
+                    <label for="service-contact" class="block text-sm font-medium text-gray-700">Contact Number (For Public)</label>
+                    <input type="tel" id="service-contact" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-fiji-blue focus:ring-fiji-blue p-2.5" placeholder="e.g., 9999999">
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="button" id="modal-cancel" onclick="closeAddServiceModal()" class="px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg mr-2">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition duration-150">
+                        Submit Service
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- V. Global Custom Modal (for errors and alerts) -->
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300">
+        <div class="bg-white w-full max-w-sm p-6 rounded-xl shadow-2xl relative">
+            <h2 id="modal-title" class="text-xl font-bold text-fiji-blue mb-4">Error</h2>
+            <p id="modal-message" class="text-gray-700 mb-6">Message content.</p>
+            <input type="text" id="modal-input" class="w-full border-gray-300 rounded-lg shadow-sm p-2 mb-4 hidden" placeholder="Enter value...">
+            <div class="flex justify-end">
+                <button id="modal-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg mr-2 hidden">Cancel</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-fiji-blue hover:bg-fiji-blue/90 text-white font-semibold rounded-lg shadow-md transition duration-150">Understood</button>
+            </div>
+            <button id="modal-close-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- VI. Application Logic (Bundled JavaScript) -->
     <script>
         // Set Firestore log level to debug for troubleshooting
-        firebase.firestore.setLogLevel('Debug');
+        // This relies on the firebase-firestore-compat.js script loading above
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+             firebase.firestore.setLogLevel('Debug');
+        }
+       
 
         // --- Global Variables (will be populated by initFirebaseApp) ---
         let db;
@@ -77,7 +175,7 @@
             messagingSenderId: "246057187129",
             appId: "1:246057187129:web:0ce25c1aa059b360badae8"
         };
-        
+
         const appId = firebaseConfig.projectId;
 
         // Service categories for filtering
@@ -148,6 +246,18 @@
             // Initialize modalUI here to ensure DOM elements exist
             modalUI = new CustomModalUI(); 
 
+            // Check if Firebase compatibility scripts loaded successfully
+            if (typeof firebase === 'undefined') {
+                 const errorMessage = `Firebase SDK is not defined. Your environment is blocking the Firebase script links. Please check network settings.`;
+                 if (modalUI) {
+                    modalUI.show({ title: 'Critical SDK Load Error', message: errorMessage });
+                 }
+                 document.getElementById('user-id-display').textContent = 'SDK_BLOCKED';
+                 document.getElementById('loading-indicator').classList.add('hidden');
+                 return;
+            }
+
+
             if (!firebaseConfig || !firebaseConfig.apiKey) {
                 modalUI.show({ title: 'Critical Error', message: 'Firebase configuration missing. The app cannot start.' });
                 document.getElementById('user-id-display').textContent = 'CONFIG_MISSING';
@@ -169,6 +279,7 @@
                     if (user) {
                         _currentUserId = user.uid;
                     } else {
+                        // This should ideally never run if sign-in succeeds
                         _currentUserId = 'NOT_AUTHENTICATED';
                     }
 
@@ -185,11 +296,18 @@
                 // 3. Attempt Sign-in
                 // Use a self-executing async function for sign-in
                 (async () => {
-                    if (initialAuthToken) {
-                        await auth.signInWithCustomToken(initialAuthToken);
-                    } else {
-                        // For live deployments (GitHub Pages), sign in anonymously.
-                        await auth.signInAnonymously();
+                    try {
+                        if (initialAuthToken) {
+                            // If Canvas provides a custom token, sign in with it
+                            await auth.signInWithCustomToken(initialAuthToken);
+                        } else {
+                            // Fallback: Sign in anonymously
+                            await auth.signInAnonymously();
+                        }
+                    } catch (e) {
+                        console.error("Authentication Error:", e);
+                        modalUI.show({ title: 'Auth Error', message: `Failed to sign in: ${e.message}` });
+                        document.getElementById('user-id-display').textContent = 'AUTH_FAILED';
                     }
                 })();
 
@@ -199,9 +317,9 @@
                 const errorMessage = `Startup failed: ${error.message}. Please check your configuration and network.`;
 
                 if (modalUI) {
-                     modalUI.show({ title: 'Critical Configuration Error', message: errorMessage });
+                    modalUI.show({ title: 'Critical Configuration Error', message: errorMessage });
                 }
-               
+            
                 document.getElementById('user-id-display').textContent = 'INIT_ERROR';
                 document.getElementById('loading-indicator').classList.add('hidden');
             }
@@ -276,173 +394,4 @@
                     </div>
                     <p class="text-gray-700 mb-3">${service.description}</p>
                     <div class="text-sm text-gray-600 mb-4">
-                        <p class="mb-1">Listed by: <span class="font-medium">${service.listedBy || 'Unknown User'}</span></p>
-                        <p class="mb-1">Location: <span class="font-medium">${service.location || 'Fiji'}</span></p>
-                    </div>
-                    <div class="flex justify-between items-center pt-2 border-t border-gray-100">
-                        <button id="like-btn-${service.id}" class="like-btn flex items-center text-sm font-medium transition duration-150 transform active:scale-95 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-400'}">
-                            <i class="ph-fill ph-heart mr-1.5 text-lg"></i>
-                            <span class="like-count">${likes.length}</span>
-                        </button>
-                        <a href="tel:${service.contact}" class="text-fiji-blue hover:text-fiji-blue/80 font-semibold flex items-center">
-                            Call Now
-                            <i class="ph-bold ph-phone-call ml-2"></i>
-                        </a>
-                    </div>
-                `;
-                listContainer.appendChild(serviceCard);
-
-                // Add event listener for the like button
-                document.getElementById(`like-btn-${service.id}`).addEventListener('click', () => toggleLike(service.id, isLiked, likes));
-            });
-        }
-
-        /**
-         * Returns Tailwind color class based on category.
-         */
-        function getCategoryColorClass(category) {
-            switch (category) {
-                case 'Trades': return 'bg-orange-500';
-                case 'Food': return 'bg-green-600';
-                case 'Health': return 'bg-purple-600';
-                case 'Other': return 'bg-yellow-600';
-                default: return 'bg-gray-500';
-            }
-        }
-
-
-        /**
-         * Handles liking and unliking a service.
-         * @param {string} serviceId - The ID of the service document.
-         * @param {boolean} isCurrentlyLiked - Whether the current user has liked it.
-         * @param {Array<string>} likesArray - The current list of user IDs who liked the service.
-         */
-        async function toggleLike(serviceId, isCurrentlyLiked, likesArray) {
-             if (!isAuthReady || !db || _currentUserId === 'NOT_AUTHENTICATED' || _currentUserId === 'INIT_ERROR') {
-                if (modalUI) {
-                    modalUI.show({ title: 'Authentication Required', message: 'You must be authenticated to like a service. Please wait for initialization.' });
-                }
-                return;
-            }
-
-            // Public data path: /artifacts/{appId}/public/data/services/{serviceId}
-            const docRef = db.collection(`artifacts/${appId}/public/data/services`).doc(serviceId);
-            
-            // Use FieldValue.arrayUnion/arrayRemove from the global Firebase namespace
-            const updateAction = isCurrentlyLiked 
-                ? firebase.firestore.FieldValue.arrayRemove(_currentUserId) 
-                : firebase.firestore.FieldValue.arrayUnion(_currentUserId);
-
-            try {
-                await docRef.update({
-                    likes: updateAction
-                });
-                // The onSnapshot listener will automatically update the UI
-            } catch (error) {
-                console.error("Error toggling like:", error);
-                if (modalUI) {
-                    modalUI.show({ title: 'Error Liking Service', message: 'Could not update like status. Please check your connection.' });
-                }
-            }
-        }
-
-        /**
-         * Sets up the interactive category tabs.
-         */
-        function setupCategoryTabs() {
-            const tabsContainer = document.getElementById('tabs-container');
-            tabsContainer.innerHTML = '';
-
-            categories.forEach(category => {
-                const button = document.createElement('button');
-                button.textContent = category;
-                button.className = 'category-tab text-gray-500 px-4 py-2 text-center transition duration-200';
-                if (category === currentCategory) {
-                    button.classList.add('tab-active');
-                }
-
-                button.addEventListener('click', () => {
-                    // Update active category
-                    currentCategory = category;
-
-                    // Update button styles
-                    document.querySelectorAll('.category-tab').forEach(btn => {
-                        btn.classList.remove('tab-active');
-                    });
-                    button.classList.add('tab-active');
-
-                    // No need to explicitly call renderServices, as onSnapshot handles updates
-                });
-                tabsContainer.appendChild(button);
-            });
-        }
-
-        /**
-         * Opens the modal for adding a new service.
-         */
-        function openAddServiceModal() {
-            if (!isAuthReady || _currentUserId === 'NOT_AUTHENTICATED' || _currentUserId === 'INIT_ERROR') {
-                if (modalUI) {
-                    modalUI.show({ title: 'Authentication Required', message: 'The app is still connecting to the database or could not authenticate. Please wait a moment.' });
-                }
-                return;
-            }
-
-            document.getElementById('add-service-modal').classList.remove('hidden');
-        }
-
-        /**
-         * Closes the add service modal and clears the form.
-         */
-        function closeAddServiceModal() {
-            document.getElementById('add-service-modal').classList.add('hidden');
-            document.getElementById('add-service-form').reset();
-        }
-
-        /**
-         * Adds a new service to Firestore.
-         * @param {Event} e - The form submit event.
-         */
-        async function addService(e) {
-            e.preventDefault();
-
-            const name = document.getElementById('service-name').value.trim();
-            const description = document.getElementById('service-description').value.trim();
-            const category = document.getElementById('service-category').value;
-            const location = document.getElementById('service-location').value.trim() || 'Fiji';
-            const contact = document.getElementById('service-contact').value.trim();
-
-            if (!name || !description || !contact) {
-                if (modalUI) {
-                    modalUI.show({ title: 'Missing Information', message: 'Please fill in the Service Name, Description/Contact Details, and Contact Number.' });
-                }
-                return;
-            }
-
-            if (!db) return; // Database not initialized
-
-            const newService = {
-                name,
-                description,
-                category,
-                location,
-                contact,
-                listedBy: _currentUserId.substring(0, 7) + '...', // Store a shortened, public ID for display
-                listedAt: Date.now(),
-                likes: [], // Initialize with an empty array of user IDs
-                userId: _currentUserId // Store the full ID for filtering/management (private)
-            };
-
-            try {
-                // Public data path: /artifacts/{appId}/public/data/services
-                const collectionPath = `artifacts/${appId}/public/data/services`;
-                await db.collection(collectionPath).add(newService);
-
-                closeAddServiceModal();
-                if (modalUI) {
-                    modalUI.show({ title: 'Success!', message: 'Your service has been listed and is now visible to everyone!' });
-                }
-            } catch (error) {
-                console.error("Error adding service:", error);
-                if (modalUI) {
-                    modalUI.show({ title: 'Submission Failed', message: `There was an er
+                        <p class="mb-1">Listed by: <span class="font-medium">${service.listedBy || 'Unknown User'}</span
