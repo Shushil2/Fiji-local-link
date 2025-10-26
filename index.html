@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
     <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <!-- Set Inter as the default font -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap)');
         :root {
             --primary-blue: #0A4AF1;
             --fiji-blue: #0A4AF1;
@@ -192,7 +192,7 @@
 
     <!-- Floating Action Button (FAB) for adding new services -->
     <button id="fab-button" class="fixed-fab w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-xl hover:bg-blue-700 transition transform hover:scale-105" title="Add New Service" style="opacity: 0; pointer-events: none;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
             <path fill-rule="evenodd" d="M12 5.25a.75.75 0 0 1 .75.75v5.25H18a.75.75 0 0 1 0 1.5h-5.25V18a.75.75 0 0 1-1.5 0v-5.25H6a.75.75 0 0 1 0-1.5h5.25V6a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
         </svg>
     </button>
@@ -215,7 +215,7 @@
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-2xl font-bold text-blue-700">List Your Essential Service</h3>
                 <button onclick="closeAddServiceModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
                         <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
                     </svg>
                 </button>
@@ -258,9 +258,9 @@
 
     <!-- Firebase SDK Imports -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js)";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js)";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js)";
 
         // Global Firebase and State Variables
         let app;
@@ -414,7 +414,7 @@
                 if (!firebaseConfig) {
                     contentArea.innerHTML = renderCriticalError(
                         'Configuration Error', 
-                        'Firebase configuration is missing. This application only runs inside the Canvas environment because it needs special security variables (like __firebase_config) to connect securely to the database. It cannot run directly from a standard web page like GitHub Pages.'
+                        'Firebase configuration is missing. This application only runs inside the <b>Canvas environment</b> because it needs special security variables (like __firebase_config) to connect securely to the database. It cannot run directly from a standard web page like GitHub Pages.'
                     );
                     userIdDisplay.textContent = '(User ID: CONFIG_MISSING)';
                     // Hide FAB button since it can't interact with the DB
@@ -432,13 +432,4 @@
                 await setPersistence(auth, browserSessionPersistence);
 
                 // Check for initialAuthToken and sign in, or sign in anonymously
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                // Attach listener for auth state changes
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUserI
+                if (in
