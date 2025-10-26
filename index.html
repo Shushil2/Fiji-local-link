@@ -1,867 +1,444 @@
 <!DOCTYPE html>
-
 <!-- Using the `lang="en"` attribute on the html tag to ensure the browser processes the document correctly as HTML. -->
-
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Fiji Local Link</title>
-
     <!-- Load Tailwind CSS -->
-
     <script src="https://cdn.tailwindcss.com"></script>
-
     <!-- Set Inter as the default font -->
-
     <style>
-
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-
         :root {
-
             --primary-blue: #0A4AF1;
-
             --fiji-blue: #0A4AF1;
-
         }
-
         body {
-
             font-family: 'Inter', sans-serif;
-
             background-color: #f0f4f8; /* Light background for the whole page */
-
             display: flex;
-
             justify-content: center;
-
             align-items: flex-start; /* Align to top instead of center for better mobile flow */
-
             min-height: 100vh;
-
             padding: 16px 0;
-
         }
-
         .app-container {
-
             width: 100%;
-
             max-width: 420px; /* Max width for mobile-centric design */
-
             background-color: white;
-
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-
             border-radius: 20px;
-
             padding-bottom: 80px; /* Space for the floating button */
-
         }
-
         .header-card {
-
             background-color: white;
-
             padding: 32px 16px;
-
             border-bottom: 1px solid #e5e7eb;
-
             text-align: center;
-
         }
-
         .tab-button {
-
             padding: 12px 16px;
-
             border-radius: 9999px; /* Fully rounded */
-
             font-weight: 500;
-
             transition: all 0.2s;
-
             cursor: pointer;
-
             flex-shrink: 0; /* Prevent shrinking in scroll view */
-
         }
-
         .tab-button.active {
-
             background-color: var(--fiji-blue);
-
             color: white;
-
             box-shadow: 0 4px 8px rgba(10, 74, 241, 0.4);
-
         }
-
         .tab-button:not(.active) {
-
             color: #4b5563; /* Gray text when inactive */
-
             background-color: #e5e7eb;
-
         }
-
         .service-card {
-
             transition: transform 0.2s, box-shadow 0.2s;
-
         }
-
         .service-card:active {
-
             transform: scale(0.98);
-
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-
         }
-
-
 
         /* Custom Modal Styles (for alert/confirm replacement) */
-
         .custom-modal-overlay {
-
             position: fixed;
-
             top: 0;
-
             left: 0;
-
             width: 100%;
-
             height: 100%;
-
             background-color: rgba(0, 0, 0, 0.6);
-
             display: flex;
-
             justify-content: center;
-
             align-items: center;
-
             z-index: 1000;
-
             opacity: 0;
-
             visibility: hidden;
-
             transition: opacity 0.3s ease;
-
         }
-
         .custom-modal-overlay.open {
-
             opacity: 1;
-
             visibility: visible;
-
         }
-
         .custom-modal {
-
             background-color: white;
-
             border-radius: 12px;
-
             padding: 24px;
-
             max-width: 90%;
-
             min-width: 300px;
-
             text-align: center;
-
             transform: scale(0.9);
-
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-
         }
-
         .custom-modal-overlay.open .custom-modal {
-
             transform: scale(1);
-
         }
-
-
 
         /* Custom scrollbar for tab bar */
-
         .tab-scroll-container::-webkit-scrollbar {
-
             display: none;
-
         }
-
         .tab-scroll-container {
-
             -ms-overflow-style: none;  /* IE and Edge */
-
             scrollbar-width: none;  /* Firefox */
-
         }
-
         .fixed-fab {
-
             position: fixed;
-
             bottom: 30px;
-
             right: 30px;
-
             z-index: 50;
-
         }
-
         /* Mobile-specific fix for FAB position to center within the max-width container */
-
         @media (max-width: 420px) {
-
             .fixed-fab {
-
                 left: 50%;
-
-                transform: translateX(calc(420px/2 - 30px)); /* Adjust for the right 30px margin and centering */
-
-                /* This is a bit of a hack for the single-file constraint, but aims to center it on small screens */
-
+                transform: translateX(calc(420px/2 - 30px)); 
             }
-
         }
-
         /* Style for the Add Service Modal */
-
         #add-service-modal-container {
-
             z-index: 1010; /* Higher z-index for the main app modal */
-
         }
-
         .btn-primary {
-
             background-color: var(--fiji-blue);
-
             color: white;
-
             font-weight: 600;
-
             padding: 10px 20px;
-
             border-radius: 8px;
-
             transition: all 0.2s;
-
         }
-
         .btn-primary:hover {
-
             background-color: #083abf;
-
             box-shadow: 0 4px 8px rgba(10, 74, 241, 0.4);
-
         }
-
         .btn-secondary {
-
             background-color: #e5e7eb;
-
             color: #4b5563;
-
             font-weight: 600;
-
             padding: 10px 20px;
-
             border-radius: 8px;
-
             transition: background-color 0.2s;
-
         }
-
         .btn-secondary:hover {
-
             background-color: #d1d5db;
-
         }
-
-
 
         /* Loading Spinner */
-
         .spinner {
-
             border: 4px solid rgba(0, 0, 0, 0.1);
-
             border-top: 4px solid var(--primary-blue);
-
             border-radius: 50%;
-
             width: 30px;
-
             height: 30px;
-
             animation: spin 1s linear infinite;
-
         }
-
         @keyframes spin {
-
             0% { transform: rotate(0deg); }
-
             100% { transform: rotate(360deg); }
-
         }
-
     </style>
-
 </head>
-
 <body class="min-h-screen">
 
-
-
     <div id="app-container" class="app-container">
-
         <!-- Header Section -->
-
         <div class="header-card">
-
             <h1 class="text-3xl font-extrabold text-blue-700">Fiji Local Link</h1>
-
             <p class="text-gray-500 mt-1 text-sm">Connecting essential services in Fiji.</p>
-
             <p id="user-id-display" class="text-xs mt-2 text-gray-400 select-all">(User ID: Loading...)</p>
-
         </div>
-
-
 
         <!-- Service Categories/Tabs -->
-
         <div class="px-4 py-4 tab-scroll-container overflow-x-auto whitespace-nowrap">
-
             <!-- Tabs will be rendered here by JavaScript -->
-
             <div id="category-tabs" class="flex space-x-3">
-
                 <!-- Tab buttons go here -->
-
             </div>
-
         </div>
-
-
 
         <!-- Main Content Area -->
-
         <div id="main-content" class="px-4 pt-4">
-
-            <!-- Loading and Service List will be rendered here -->
-
+            <!-- Initial Loading State -->
             <div class="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md mt-4">
-
                 <div class="spinner mb-4"></div>
-
                 <p class="text-lg font-semibold text-gray-700">Connecting to Database...</p>
-
             </div>
-
         </div>
-
-
 
     </div>
 
-
-
     <!-- Floating Action Button (FAB) for adding new services -->
-
     <button id="fab-button" class="fixed-fab w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-xl hover:bg-blue-700 transition transform hover:scale-105" title="Add New Service" style="opacity: 0; pointer-events: none;">
-
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-
             <path fill-rule="evenodd" d="M12 5.25a.75.75 0 0 1 .75.75v5.25H18a.75.75 0 0 1 0 1.5h-5.25V18a.75.75 0 0 1-1.5 0v-5.25H6a.75.75 0 0 1 0-1.5h5.25V6a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-
         </svg>
-
     </button>
 
 
-
-
-
     <!-- Custom Modal for Alerts, Confirms, and Errors -->
-
     <div id="custom-modal-overlay" class="custom-modal-overlay" onclick="closeCustomModal()">
-
         <div id="custom-modal" class="custom-modal" onclick="event.stopPropagation()">
-
             <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4"></h3>
-
             <p id="modal-message" class="text-gray-600 mb-6"></p>
-
             <div id="modal-actions" class="flex justify-end space-x-3">
-
                 <!-- Buttons will be dynamically inserted here -->
-
             </div>
-
         </div>
-
     </div>
-
-
 
     <!-- Add New Service Modal (Form) -->
-
     <div id="add-service-modal-overlay" class="custom-modal-overlay" onclick="closeAddServiceModal()">
-
         <div id="add-service-modal" class="custom-modal !text-left" onclick="event.stopPropagation()">
-
             <div class="flex justify-between items-center mb-6">
-
                 <h3 class="text-2xl font-bold text-blue-700">List Your Essential Service</h3>
-
                 <button onclick="closeAddServiceModal()" class="text-gray-400 hover:text-gray-600">
-
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-
                         <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-
                     </svg>
-
                 </button>
-
             </div>
-
             <form id="add-service-form">
-
                 <div class="mb-4">
-
                     <label for="service-name" class="block text-sm font-medium text-gray-700 mb-1">Service Name/Business Title</label>
-
                     <input type="text" id="service-name" name="service-name" required placeholder="E.g., Ratu Electrical, Fresh Bites Cafe"
-
                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-
                 </div>
-
                 <div class="mb-4">
-
                     <label for="service-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-
                     <select id="service-category" name="service-category" required
-
                             class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-
                         <!-- Options filled by JS -->
-
                     </select>
-
                 </div>
-
                 <div class="mb-4">
-
                     <label for="service-description" class="block text-sm font-medium text-gray-700 mb-1">Description / Contact Details</label>
-
                     <textarea id="service-description" name="service-description" required rows="4" placeholder="Brief description of the service and how to contact you (phone, email, location, etc.)"
-
                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"></textarea>
-
                 </div>
-
                 <div class="mb-6">
-
                     <label for="service-location" class="block text-sm font-medium text-gray-700 mb-1">Main Location (City/Town)</label>
-
                     <input type="text" id="service-location" name="service-location" required placeholder="E.g., Suva, Nadi, Lautoka"
-
                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-
                 </div>
-
-
 
                 <div class="flex justify-end space-x-3">
-
                     <button type="button" onclick="closeAddServiceModal()" class="btn-secondary">Cancel</button>
-
                     <button type="submit" id="submit-service-btn" class="btn-primary">
-
                         <span id="submit-service-text">List Service</span>
-
                         <div id="submit-service-spinner" class="spinner ml-2 hidden w-5 h-5 border-2 border-white border-t-2 border-t-blue-300"></div>
-
                     </button>
-
                 </div>
-
             </form>
-
         </div>
-
     </div>
-
-
-
 
 
     <!-- Firebase SDK Imports -->
-
     <script type="module">
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
         import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-
-
         // Global Firebase and State Variables
-
         let app;
-
         let db;
-
         let auth;
-
         let currentUserId = 'Loading...';
-
         let isAuthReady = false;
-
         
-
         // --- Global Variables (MUST be used for environment setup) ---
-
+        // We use typeof check to see if the environment variables exist
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        const firebaseConfig = typeof __firebase_config !== 'undefined'
-
-            ? JSON.parse(__firebase_config)
-
-            : null;
-
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined'
-
-            ? __initial_auth_token
-
-            : null;
-
+        const firebaseConfigRaw = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        let firebaseConfig = null;
+        try {
+            if (firebaseConfigRaw) {
+                firebaseConfig = JSON.parse(firebaseConfigRaw);
+            }
+        } catch (e) {
+            console.error("Error parsing firebase config:", e);
+        }
         
-
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
         // The collection path for public data
-
         const PUBLIC_COLLECTION_PATH = `/artifacts/${appId}/public/data/services`;
 
-
-
         // Service categories for filtering and form
-
         const categories = [
-
             'All Services',
-
             'Trades (Plumbing, Electrical, Carpentry, Mechanics, etc.)',
-
             'Food (Restaurants, Takeaways, Bakers, Caterers)',
-
             'Health (Clinics, Pharmacy, Fitness, Wellness)',
-
             'Other (Any essential service not listed above)'
-
         ];
 
-
-
         // --- DOM Elements ---
-
         const userIdDisplay = document.getElementById('user-id-display');
-
         const contentArea = document.getElementById('main-content');
-
         const categoryTabsContainer = document.getElementById('category-tabs');
-
         const fabButton = document.getElementById('fab-button');
-
         const addServiceForm = document.getElementById('add-service-form');
-
         const serviceCategorySelect = document.getElementById('service-category');
-
         const submitServiceBtn = document.getElementById('submit-service-btn');
-
         const submitServiceText = document.getElementById('submit-service-text');
-
         const submitServiceSpinner = document.getElementById('submit-service-spinner');
 
 
-
-
-
         // --- State Management ---
-
         let currentCategory = categories[0];
-
         let serviceSnapshotUnsubscribe;
 
-
-
         // --- Custom Modal UI Class (Replaces alert/confirm) ---
-
         class CustomModal {
-
             constructor(modalId = 'custom-modal-overlay') {
-
                 this.overlay = document.getElementById(modalId);
-
                 this.modal = this.overlay.querySelector('.custom-modal');
-
                 this.titleElement = this.overlay.querySelector('#modal-title');
-
                 this.messageElement = this.overlay.querySelector('#modal-message');
-
                 this.actionsElement = this.overlay.querySelector('#modal-actions');
-
             }
-
-
 
             // Shows a basic alert/error modal
-
             alert(title, message) {
-
                 this.titleElement.textContent = title;
-
                 // Clear previous message HTML and set new message
-
                 this.messageElement.innerHTML = message;
-
                 this.actionsElement.innerHTML = '';
-
                 
-
                 const okButton = document.createElement('button');
-
                 okButton.textContent = 'Understood';
-
                 okButton.className = 'btn-primary';
-
                 okButton.onclick = () => this.close();
-
                 this.actionsElement.appendChild(okButton);
-
                 
-
                 this.open();
-
             }
-
-
 
             // Shows a confirmation modal
-
             confirm(title, message, onConfirm) {
-
                 this.titleElement.textContent = title;
-
                 this.messageElement.innerHTML = message;
-
                 this.actionsElement.innerHTML = '';
 
-
-
                 const cancelButton = document.createElement('button');
-
                 cancelButton.textContent = 'Cancel';
-
                 cancelButton.className = 'btn-secondary';
-
                 cancelButton.onclick = () => this.close();
-
                 this.actionsElement.appendChild(cancelButton);
 
-
-
                 const confirmButton = document.createElement('button');
-
                 confirmButton.textContent = 'Confirm';
-
                 confirmButton.className = 'btn-primary';
-
                 confirmButton.onclick = () => {
-
                     onConfirm();
-
                     this.close();
-
                 };
-
                 this.actionsElement.appendChild(confirmButton);
-
                 
-
                 this.open();
-
             }
-
-
 
             open() {
-
                 this.overlay.classList.add('open');
-
             }
-
-
 
             close() {
-
                 this.overlay.classList.remove('open');
-
             }
-
         }
-
         
-
         const customModal = new CustomModal();
-
         window.closeCustomModal = () => customModal.close(); // Make accessible globally for overlay click
 
-
-
         // --- Add Service Modal Functions ---
-
         const addServiceModal = new CustomModal('add-service-modal-overlay');
-
         window.closeAddServiceModal = () => {
-
             // Reset form when closing
-
             addServiceForm.reset();
-
             addServiceModal.close();
-
         };
 
-
-
         function openAddServiceModal() {
-
             if (!isAuthReady) {
-
                 customModal.alert('Authentication Required', 'Please wait for the user ID to load before adding a service.');
-
                 return;
-
             }
-
             addServiceModal.open();
-
         }
-
         
-
         fabButton.addEventListener('click', openAddServiceModal);
-
-
-
 
 
         // --- Firebase Initialization and Authentication ---
 
-
+        function renderCriticalError(title, message) {
+            // We use the full HTML insertion here to fully replace the stuck UI.
+            return `
+                <div class="flex items-center justify-center p-4 bg-gray-100 z-50">
+                    <div class="bg-white rounded-xl p-6 shadow-2xl max-w-sm w-full text-center border-t-4 border-red-600">
+                        <h3 class="text-xl font-bold text-red-600 mb-2">${title}</h3>
+                        <p class="text-gray-700 mb-4 text-sm">${message}</p>
+                        <button class="btn-primary bg-red-600 hover:bg-red-700" onclick="location.reload()">Reload App</button>
+                    </div>
+                </div>
+            `;
+        }
 
         async function initFirebaseApp() {
-
             try {
-
-                // If firebaseConfig is missing, show an error and stop
-
-                if (!firebaseConfig || !firebaseConfig.projectId) {
-
-                    throw new Error('Firebase configuration missing. The app cannot start.');
-
+                // --- CRITICAL CHECK: Ensure environment variables are present ---
+                if (!firebaseConfig) {
+                    contentArea.innerHTML = renderCriticalError(
+                        'Configuration Error', 
+                        'Firebase configuration is missing. This application only runs inside the Canvas environment because it needs special security variables (like __firebase_config) to connect securely to the database. It cannot run directly from a standard web page like GitHub Pages.'
+                    );
+                    userIdDisplay.textContent = '(User ID: CONFIG_MISSING)';
+                    // Hide FAB button since it can't interact with the DB
+                    fabButton.style.opacity = '0';
+                    fabButton.style.pointerEvents = 'none';
+                    return; 
                 }
-
                 
-
                 app = initializeApp(firebaseConfig);
-
                 db = getFirestore(app);
-
                 auth = getAuth(app);
-
                 
-
-                // Set Firestore log level for debugging
-
                 setLogLevel('debug');
-
                 
-
-                // Use session persistence to remember user within the session (browser tab)
-
                 await setPersistence(auth, browserSessionPersistence);
 
-
-
                 // Check for initialAuthToken and sign in, or sign in anonymously
-
                 if (initialAuthToken) {
-
                     await signInWithCustomToken(auth, initialAuthToken);
-
                 } else {
-
                     await signInAnonymously(auth);
-
                 }
 
-
-
                 // Attach listener for auth state changes
-
                 onAuthStateChanged(auth, (user) => {
-
                     if (user) {
-
-                        currentUserId = user.uid;
-
-                        userIdDisplay.textContent = `(User ID: ${currentUserId.substring(0, 10)}...)`;
-
-                        // Authentication is complete and user ID is available
-
-                        if (!isAuthReady) {
-
-                            isAuthReady = true;
-
-                            // Start listening for data only after auth is confirmed
-
-                            listenForServices(currentCategory);
-
-                            // Show FAB button
-
-                            fabButton.style.opacity = '1';
-
-                            fabButton.style.pointerEvents = 'auto';
-
-                        }
-
-                    } else {
-
-                        currentUserId = 'NOT_AUTHENTICATED';
-
-                        userIdDisplay.textContent = `(User ID: NOT_AUTHENTICATED)`;
-
-                        // Even if no
+                        currentUserI
