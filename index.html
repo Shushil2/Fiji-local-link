@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Removed Font Awesome reference as we'll use an inline SVG for the FAB -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
@@ -46,7 +45,7 @@
             justify-content: center;
             transition: background-color 0.15s, transform 0.15s;
             cursor: pointer;
-            border: none; /* Ensure no default button borders */
+            border: none;
         }
         #fab:hover {
             background-color: #1d4ed8; /* Blue-700 */
@@ -74,6 +73,15 @@
             width: 90%;
             max-width: 400px;
         }
+
+        /* Loading Spinner */
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -94,7 +102,17 @@
         <!-- Content Area -->
         <div id="content-area" class="bg-white p-4 rounded-xl shadow-lg min-h-[200px] flex items-center justify-center">
             <div id="loading-state" class="text-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <!-- Cleaner SVG-based Spinner -->
+                <svg class="spinner mx-auto text-blue-500" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 4.75V6.25" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M17.1266 6.87347L16.0659 7.93414" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M19.25 12H17.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M17.1266 17.1265L16.0659 16.0659" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 17.75V19.25" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7.93414 16.0659L6.87347 17.1266" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M6.25 12H4.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7.93414 7.93414L6.87347 6.87347" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
                 <p class="mt-3 text-gray-600">Connecting to Database...</p>
             </div>
 
@@ -109,7 +127,6 @@
             </div>
 
             <div id="no-services-state" class="hidden text-center text-gray-500">
-                <!-- Swapped fas fa-clipboard-list for a simple SVG -->
                 <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto text-gray-400" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="8" y1="9" x2="11" y2="9"></line></svg>
                 <p class="text-lg font-semibold">No services found in this category.</p>
                 <p class="text-sm">Be the first to list a service!</p>
@@ -122,7 +139,7 @@
         
         <!-- Floating Action Button for adding services -->
         <button id="fab" title="Add New Service">
-            <!-- INLINE SVG REPLACING FA ICON -->
+            <!-- INLINE SVG PLUS ICON -->
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -143,6 +160,7 @@
         let auth = null;
         let userId = 'Loading...';
         let currentCategory = 'All';
+        let isAuthReady = false; // New flag to track readiness
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -153,7 +171,6 @@
 
         // UI Element References
         const userStatusEl = document.getElementById('user-status');
-        const contentArea = document.getElementById('content-area');
         const loadingState = document.getElementById('loading-state');
         const criticalErrorState = document.getElementById('critical-error-state');
         const dataErrorState = document.getElementById('data-error-state');
@@ -162,12 +179,10 @@
         const categoryTabsEl = document.getElementById('category-tabs');
         const fabButton = document.getElementById('fab');
 
+        const categories = ['All', 'Trades', 'Food', 'Health', 'Other'];
+
         // --- Utility Functions for Custom Modals ---
         
-        /**
-         * Shows a simple alert modal (replacing window.alert).
-         * @param {string} message - The message to display.
-         */
         function showAlert(message) {
             const existingModal = document.getElementById('custom-modal');
             if (existingModal) existingModal.remove();
@@ -184,12 +199,9 @@
             document.body.appendChild(modal);
         }
 
-        /**
-         * Shows a form modal to collect service details (replacing chained window.prompt).
-         */
         function showAddServiceModal() {
-            if (!db || !userId || userId === 'Loading...') {
-                showAlert("Please wait for the database to connect before adding a service.");
+            if (!isAuthReady) {
+                showAlert("System still initializing. Please wait a moment for the database connection to complete.");
                 return;
             }
 
@@ -284,19 +296,18 @@
 
         /**
          * Hides all content states and shows only the specified one.
-         * @param {HTMLElement} stateEl - The state element to show (e.g., loadingState, servicesList).
          */
         function showState(stateEl) {
             [loadingState, criticalErrorState, dataErrorState, noServicesState, servicesList].forEach(el => {
                 if (el) {
                     el.classList.add('hidden');
-                    // Reset inline styles for a clean slate
                     el.style.display = '';
                 }
             });
             if (stateEl) {
                 stateEl.classList.remove('hidden');
-                stateEl.style.display = 'flex'; // Use flex to center content within the main content area
+                // Use flex to center content within the main content area
+                stateEl.style.display = (stateEl === servicesList) ? 'block' : 'flex'; 
             }
         }
 
@@ -331,8 +342,6 @@
             showState(servicesList);
         }
 
-        const categories = ['All', 'Trades', 'Food', 'Health', 'Other'];
-
         function renderCategoryTabs() {
             categoryTabsEl.innerHTML = '';
             categories.forEach(category => {
@@ -361,34 +370,16 @@
          * Sets up the real-time listener for services based on the selected category.
          */
         function startDataListener() {
+            if (!isAuthReady) {
+                console.warn("Attempted to start listener before Auth was ready. Skipping.");
+                return;
+            }
+
             if (unsubscribeServices) {
                 unsubscribeServices(); // Detach previous listener
             }
-            if (!db) return;
 
+            // The 'db' object should now be available thanks to the initialization promise
             showState(loadingState);
 
-            const servicesCollectionRef = collection(db, PUBLIC_COLLECTION_PATH);
-            let servicesQuery = query(servicesCollectionRef);
-
-            if (currentCategory !== 'All') {
-                servicesQuery = query(servicesCollectionRef, where('category', '==', currentCategory));
-            }
-
-            // Using onSnapshot for real-time updates
-            unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
-                try {
-                    const services = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        timestamp: doc.data().timestamp ? doc.data().timestamp.toDate().getTime() : Date.now() // Convert Timestamp to number
-                    })).sort((a, b) => b.timestamp - a.timestamp); // Sort newest first
-
-                    renderServices(services);
-                } catch (error) {
-                    console.error("Error fetching or processing services data:", error);
-                    showState(dataErrorState);
-                }
-            }, (error) => {
-                console.error("Firestore onSnapshot failed:", error);
-            
+            const servicesCollectionRef = c
