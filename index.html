@@ -1,406 +1,405 @@
-<!-- 
-    Updated Index.html for Fiji Local Link
-    FIX: Included a fallback DEPLOYED_FIREBASE_CONFIG to allow the app to run outside of the Canvas environment (e.g., on GitHub Pages).
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter Font -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
+            background-color: #f7f9fc;
         }
-        .main-card {
-            background-color: white;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .header-bg {
-            background-color: #1e40af; /* Blue-800 */
-        }
+        /* Custom scrollbar for better mobile feel */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
 </head>
-<body>
+<body class="min-h-screen">
 
-    <div id="app" class="min-h-screen flex flex-col items-center">
-        <!-- Header -->
-        <header class="header-bg w-full p-4 text-white text-center rounded-b-xl shadow-lg">
+    <!-- Header / Top Bar -->
+    <header class="bg-blue-600 shadow-lg sticky top-0 z-10">
+        <div class="max-w-xl mx-auto p-4 text-white text-center rounded-b-xl">
             <h1 class="text-2xl font-bold">Fiji Local Link</h1>
             <p class="text-sm opacity-90">Connecting essential services in Fiji.</p>
-            <p id="user-id-display" class="text-xs mt-1">(User ID: Loading...)</p>
-        </header>
+            <p id="user-id-display" class="text-xs mt-1 bg-blue-700/50 p-1 rounded-full inline-block px-3">User ID: Loading...</p>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto p-4">
 
         <!-- Category Tabs -->
-        <div id="category-tabs" class="flex p-2 w-full max-w-lg overflow-x-auto whitespace-nowrap mt-4">
-            <!-- Tabs will be rendered here by JS -->
+        <div id="category-tabs" class="flex overflow-x-auto whitespace-nowrap space-x-2 pb-2 mb-4">
+            <!-- Tabs will be rendered here -->
         </div>
 
-        <!-- Content Area / Status Message -->
-        <div id="content-area" class="w-full max-w-lg p-4 flex-grow">
-            <div id="status-card" class="main-card p-6 text-center">
-                <p id="status-title" class="text-xl font-semibold text-gray-700">Initializing Application...</p>
-                <div class="mt-4 flex justify-center">
-                    <div id="status-spinner" class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                </div>
-                <p id="status-message" class="text-sm text-gray-500 mt-2">Connecting to Canvas environment or checking configuration.</p>
-                <button id="reload-button" onclick="location.reload()" class="hidden mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-xl transition duration-150">Reload App</button>
+        <!-- Content Area -->
+        <div id="content-area" class="bg-white p-4 rounded-xl shadow-md min-h-96 flex flex-col items-center justify-center">
+            <!-- Initial state: Loading -->
+            <div id="loading-spinner" class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                <p class="mt-4 text-gray-600">Connecting to Database...</p>
             </div>
-            
-            <div id="services-list" class="space-y-4 mt-4 hidden">
-                <!-- Services will be rendered here -->
+
+            <!-- Error Message Box (Hidden by default) -->
+            <div id="error-message-box" class="hidden text-center p-6 m-4 bg-red-50 border-2 border-red-300 rounded-xl shadow-lg w-full max-w-sm">
+                <h3 class="text-xl font-bold text-red-600 mb-2">Database Connection Error</h3>
+                <p class="text-gray-700 text-sm mb-4" id="error-details">
+                    Could not load services from the database. Please check the console for details and ensure you have read/write permissions.
+                </p>
+                <button onclick="window.location.reload();" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md">
+                    Reload App
+                </button>
+            </div>
+
+            <!-- No Services Found Message (Hidden by default) -->
+            <div id="no-services-message" class="hidden text-center p-6">
+                <img src="https://placehold.co/100x100/FEE300/000?text=📋" onerror="this.src='https://placehold.co/100x100/F0F4FF/2563EB?text=No+Data'" class="mx-auto mb-4 w-20 h-20"/>
+                <h3 class="text-xl font-bold text-gray-700 mb-2">No services found in this category.</h3>
+                <p class="text-gray-500">Be the first to list a service!</p>
+            </div>
+
+            <!-- Services List Container -->
+            <div id="services-list-container" class="w-full">
+                <!-- Services cards will be rendered here -->
             </div>
         </div>
+    </main>
 
-        <!-- Add Service Button (Always visible) -->
-        <button id="add-service-btn" 
-                class="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl text-3xl flex items-center justify-center transition duration-150 transform hover:scale-105"
-                aria-label="Add New Service">
-            +
-        </button>
+    <!-- Floating Action Button for Adding New Service -->
+    <button id="add-service-btn" class="fixed bottom-6 right-6 z-20 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition duration-300 transform active:scale-95 text-3xl">
+        +
+    </button>
 
-        <!-- Modal for adding a new service -->
-        <div id="add-service-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center hidden">
-            <div class="main-card p-6 w-full max-w-md mx-4 transform transition-all duration-300">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">List a New Service</h2>
-                
-                <input type="text" id="service-title" placeholder="Service Name (e.g., 4R Electrics)"
-                       class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                
-                <textarea id="service-description" placeholder="Description (e.g., Electrical contractors, Ba Fiji, Contact mobile 999 9999)"
-                          rows="3" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                
-                <select id="service-category"
-                        class="w-full p-3 mb-5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white">
-                    <option value="Trades">Trades</option>
-                    <option value="Food">Food</option>
-                    <option value="Health">Health</option>
-                    <option value="Other">Other</option>
-                </select>
-
-                <div class="flex justify-end space-x-3">
-                    <button id="cancel-add-service" class="py-2 px-4 text-gray-600 hover:text-gray-900 font-semibold rounded-xl">Cancel</button>
-                    <button id="list-service-btn" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition duration-150">List Service</button>
-                </div>
+    <!-- Modal for Listing a New Service (Hidden by default) -->
+    <div id="add-service-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-30 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm transform transition-all">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">List a New Service</h2>
+            <input type="text" id="service-name-input" placeholder="Service Name (e.g., 4R Electrics)" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+            <textarea id="service-details-input" placeholder="Details (e.g., Electrical contractors, Ba Fiji, Contact mobile 999 9999)" rows="3" class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required></textarea>
+            <select id="service-category-select" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <!-- Options populated by JS -->
+            </select>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-service-btn" class="text-gray-600 hover:text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-200">Cancel</button>
+                <button id="list-service-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md">List Service</button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, where, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global instances
-        let app;
-        let db;
-        let auth;
+    <script type="module">
+        // Import necessary Firebase functions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            query, 
+            onSnapshot, 
+            addDoc,
+            serverTimestamp,
+            setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set log level for debugging
+        setLogLevel('Debug');
+
+        // --- GLOBAL & FIREBASE CONFIGURATION ---
+        
+        let app, db, auth;
         let currentUserId = 'Loading...';
         let isAuthReady = false;
-        let unsubscribeServiceListener = null;
-
-        // Utility to display status to the user
-        function renderStatus(title, message, isError = false) {
-            const statusCard = document.getElementById('status-card');
-            const statusTitle = document.getElementById('status-title');
-            const statusMessage = document.getElementById('status-message');
-            const statusSpinner = document.getElementById('status-spinner');
-            const reloadButton = document.getElementById('reload-button');
-
-            if (isError) {
-                statusCard.classList.remove('text-gray-700', 'border-indigo-500');
-                statusCard.classList.add('text-red-700', 'border-red-500', 'border-t-4');
-                statusTitle.classList.add('text-red-700');
-                statusSpinner.classList.add('hidden');
-                reloadButton.classList.remove('hidden');
-            } else {
-                statusCard.classList.remove('text-red-700', 'border-red-500', 'border-t-4');
-                statusCard.classList.add('text-gray-700', 'border-t-4', 'border-indigo-500');
-                statusTitle.classList.remove('text-red-700');
-                statusSpinner.classList.remove('hidden');
-                reloadButton.classList.add('hidden');
-            }
-            statusTitle.textContent = title;
-            statusMessage.textContent = message;
-
-            document.getElementById('services-list').classList.add('hidden');
-            document.getElementById('status-card').classList.remove('hidden');
-        }
-
-        // Utility to render service item HTML
-        function renderServiceItem(service) {
-            return `
-                <div class="main-card p-4">
-                    <h3 class="text-lg font-bold text-gray-800">${service.title}</h3>
-                    <p class="text-sm text-gray-600 mt-1">${service.description}</p>
-                    <div class="flex justify-between items-center text-xs text-gray-500 mt-2">
-                        <span>Category: ${service.category}</span>
-                        <span>Posted: ${service.timestamp ? new Date(service.timestamp.toDate()).toLocaleDateString() : 'N/A'}</span>
-                    </div>
-                </div>
-            `;
-        }
         
-        // Utility to display the list of services
-        function displayServices(services) {
-            const servicesListDiv = document.getElementById('services-list');
-            const statusCard = document.getElementById('status-card');
+        // --- FALLBACK CONFIGURATION FOR EXTERNAL DEPLOYMENT (GITHUB PAGES) ---
+        // If you deploy this to GitHub Pages, the Canvas variables will be undefined.
+        // You MUST replace the placeholder values below with your actual, public 
+        // Firebase config to allow connection outside the secure Canvas environment.
+        const NON_CANVAS_FIREBASE_CONFIG = {
+            // !!! REPLACE 'YOUR_API_KEY_HERE' WITH YOUR ACTUAL KEY FOR EXTERNAL DEPLOYMENT !!!
+            apiKey: "YOUR_API_KEY_HERE", 
+            authDomain: "your-project-id.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:234567890:web:abcdef"
+        };
+        // ------------------------------------------------------------------------
 
-            if (services.length === 0) {
-                servicesListDiv.innerHTML = `
-                    <div class="main-card p-6 text-center">
-                        <span role="img" aria-label="Clipboard icon" class="text-6xl mb-3">📋</span>
-                        <p class="text-lg font-semibold text-gray-700">No services found in this category.</p>
-                        <p class="text-sm text-gray-500 mt-2">Be the first to list a service!</p>
+        // Retrieve global variables provided by the Canvas environment (Secure)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let firebaseConfig = null;
+        let initialAuthToken = null;
+
+        if (typeof __firebase_config !== 'undefined') {
+            // Running in Canvas: Use secure, injected config
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+                initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            } catch (e) {
+                console.error("Error parsing __firebase_config:", e);
+                // Fallback to error state if parsing fails
+            }
+        } else {
+            // Running outside Canvas (e.g., GitHub Pages): Use hardcoded public fallback
+            console.warn("Canvas environment variables not found. Using NON_CANVAS_FIREBASE_CONFIG.");
+            if (NON_CANVAS_FIREBASE_CONFIG.apiKey === "YOUR_API_KEY_HERE") {
+                console.error("CRITICAL WARNING: NON_CANVAS_FIREBASE_CONFIG uses placeholders. Update them for GitHub Pages deployment.");
+            }
+            firebaseConfig = NON_CANVAS_FIREBASE_CONFIG;
+        }
+
+        // Collection path for public data
+        const PUBLIC_COLLECTION_PATH = `/artifacts/${appId}/public/data/services`;
+
+        // Service Categories
+        const CATEGORIES = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
+        let activeCategory = CATEGORIES[0];
+
+        // --- DOM ELEMENTS ---
+        const userIdDisplay = document.getElementById('user-id-display');
+        const categoryTabsContainer = document.getElementById('category-tabs');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorMessageBox = document.getElementById('error-message-box');
+        const errorDetails = document.getElementById('error-details');
+        const noServicesMessage = document.getElementById('no-services-message');
+        const servicesListContainer = document.getElementById('services-list-container');
+        const addServiceBtn = document.getElementById('add-service-btn');
+        const addServiceModal = document.getElementById('add-service-modal');
+        const cancelServiceBtn = document.getElementById('cancel-service-btn');
+        const listServiceBtn = document.getElementById('list-service-btn');
+        const serviceNameInput = document.getElementById('service-name-input');
+        const serviceDetailsInput = document.getElementById('service-details-input');
+        const serviceCategorySelect = document.getElementById('service-category-select');
+
+        // --- UTILITY FUNCTIONS ---
+
+        /** Shows a specific section and hides others. */
+        function renderState(state, message = '') {
+            loadingSpinner.classList.add('hidden');
+            errorMessageBox.classList.add('hidden');
+            noServicesMessage.classList.add('hidden');
+            servicesListContainer.classList.add('hidden');
+            addServiceBtn.classList.remove('hidden'); // Show the FAB by default
+
+            switch (state) {
+                case 'LOADING':
+                    loadingSpinner.classList.remove('hidden');
+                    break;
+                case 'ERROR':
+                    errorMessageBox.classList.remove('hidden');
+                    errorDetails.textContent = message || 'An unknown error occurred. Check the console for more information.';
+                    addServiceBtn.classList.add('hidden'); // Hide FAB on critical error
+                    break;
+                case 'NO_DATA':
+                    noServicesMessage.classList.remove('hidden');
+                    break;
+                case 'HAS_DATA':
+                    servicesListContainer.classList.remove('hidden');
+                    break;
+            }
+        }
+
+        /** Renders the list of services as cards. */
+        function renderServices(services) {
+            servicesListContainer.innerHTML = ''; // Clear previous services
+            
+            if (!services || services.length === 0) {
+                renderState('NO_DATA');
+                return;
+            }
+
+            // Sort services by date/timestamp (newest first)
+            services.sort((a, b) => {
+                const dateA = a.postedDate?.toDate()?.getTime() || 0;
+                const dateB = b.postedDate?.toDate()?.getTime() || 0;
+                return dateB - dateA;
+            });
+
+            services.forEach(service => {
+                const date = service.postedDate ? new Date(service.postedDate.toDate()).toLocaleDateString() : 'N/A';
+                
+                const serviceCard = `
+                    <div class="service-card bg-gray-50 p-4 mb-3 rounded-xl shadow hover:shadow-lg transition duration-200 border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 min-w-0 pr-2">
+                                <h3 class="text-xl font-bold text-gray-800 mb-1">${service.title}</h3>
+                                <p class="text-sm text-gray-600 whitespace-pre-line">${service.details}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span class="text-xs font-semibold text-white bg-blue-500 py-1 px-2 rounded-full shadow-md">${service.category}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Posted: ${date} | User: ${service.userId.substring(0, 8)}...</p>
                     </div>
                 `;
-            } else {
-                servicesListDiv.innerHTML = services.map(renderServiceItem).join('');
-            }
-            
-            // Hide status card and show services list if ready
-            if (isAuthReady) {
-                statusCard.classList.add('hidden');
-                servicesListDiv.classList.remove('hidden');
-            }
+                servicesListContainer.innerHTML += serviceCard;
+            });
+
+            renderState('HAS_DATA');
         }
 
         // --- FIREBASE INITIALIZATION & AUTHENTICATION ---
 
-        // Global Variables check (CRITICAL: PROVIDE FALLBACKS FOR DEPLOYMENT)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // 1. FALLBACK CONFIGURATION (Your actual Firebase settings)
-        // This configuration will be used when the app is run outside Canvas (e.g., GitHub Pages).
-        const DEPLOYED_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCDKDZeYK3UT3Cuynda7HDZV9RQY-VDXh8",
-            authDomain: "fijilocalllink.firebaseapp.com",
-            projectId: "fijilocalllink",
-            storageBucket: "fijilocalllink.appspot.com",
-            messagingSenderId: "246057187129",
-            appId: "1:246057187129:web:0ce25c1aa059b360badae8"
-        };
-        
-        // Use the Canvas config if available, otherwise use the hardcoded deployed config.
-        const firebaseConfig = typeof __firebase_config !== 'undefined'
-            ? JSON.parse(__firebase_config)
-            : DEPLOYED_FIREBASE_CONFIG;
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined'
-            ? __initial_auth_token
-            : null;
-        
-        const PUBLIC_COLLECTION_PATH = `/artifacts/${appId}/public/data/services`;
-
-
-        /**
-         * Initializes Firebase App, services, and handles authentication.
-         */
+        /** Initializes Firebase App and handles authentication. */
         async function initFirebaseApp() {
-            renderStatus('Initializing Firebase...', 'Connecting to Database...');
+            renderState('LOADING');
 
-            // 1. Check for configuration errors (Should only fail if the DEPLOYED_FIREBASE_CONFIG is also invalid or missing)
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                renderStatus('CRITICAL CONFIGURATION ERROR', 
-                             'Startup failed: Firebase configuration is missing. This usually happens when the app is run outside a secure environment like Canvas, and the hardcoded config is missing.', 
-                             true);
-                console.error("Firebase Initialization Error:", "Firebase configuration is missing or malformed.");
+            if (!firebaseConfig || (firebaseConfig.apiKey === "YOUR_API_KEY_HERE" && typeof __firebase_config === 'undefined')) {
+                // Critical configuration check for external deployment placeholders
+                console.error("CRITICAL_FIREBASE_ERROR: Firebase configuration is missing or using placeholder keys externally.");
+                renderState('ERROR', 'Critical Startup Error: Firebase configuration is missing or invalid. Check console for details.');
                 return;
             }
 
             try {
-                // 2. Initialize App and Services
+                // 1. Initialize App and Services
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                
-                // Set persistence for real-world usage
-                await setPersistence(auth, browserSessionPersistence);
-
-                // 3. Sign in with custom token or anonymously
-                if (initialAuthToken) {
-                    // Use the custom token provided by the Canvas environment
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // If no token is provided (i.e., outside Canvas), sign in anonymously
-                    await signInAnonymously(auth);
-                }
-
-                // 4. Set up Auth State Listener
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        isAuthReady = true;
-                        document.getElementById('user-id-display').textContent = `(User ID: ${currentUserId.substring(0, 10)}...)`;
-                        console.log("Firebase initialized and user signed in:", currentUserId);
-
-                        // Once authenticated, start the real-time data listener for the default category
-                        listenForServices('All');
-                        document.getElementById('status-card').classList.add('hidden'); // Hide status card after successful init
-                    } else {
-                        // Should not happen if signInAnonymously() is successful, but handle logouts/errors
-                        currentUserId = 'INIT_ERROR';
-                        isAuthReady = false;
-                        document.getElementById('user-id-display').textContent = `(User ID: INIT_ERROR)`;
-                        renderStatus('CRITICAL AUTHENTICATION ERROR', 
-                                     'Authentication failed after initialization. Please check network and console.', 
-                                     true);
-                    }
-                });
-
             } catch (error) {
-                renderStatus('DATABASE CONNECTION ERROR', 
-                             `Startup failed: ${error.message}. Please check your configuration and network. Details in console.`, 
-                             true);
-                console.error("Firebase Initialization Error:", error);
-            }
-        }
-        
-        // Function to listen for services in a specific category
-        function listenForServices(category) {
-            // Stop previous listener if it exists
-            if (unsubscribeServiceListener) {
-                unsubscribeServiceListener();
-            }
-
-            renderStatus(`Connecting to Database...`, `Loading ${category} services...`);
-            displayServices([]); // Clear old list
-
-            let servicesQuery;
-            const servicesRef = collection(db, PUBLIC_COLLECTION_PATH);
-
-            if (category === 'All') {
-                servicesQuery = query(servicesRef);
-            } else {
-                servicesQuery = query(servicesRef, where("category", "==", category));
-            }
-            
-            // Listen for real-time updates
-            unsubscribeServiceListener = onSnapshot(servicesQuery, (snapshot) => {
-                const services = [];
-                snapshot.forEach((doc) => {
-                    services.push({ id: doc.id, ...doc.data() });
-                });
-                // Sort the services by timestamp (newest first) in memory
-                services.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
-                
-                displayServices(services);
-            }, (error) => {
-                console.error("Data Load Error:", error);
-                renderStatus('Data Error', 
-                             'Could not load services in real-time. Please check the console for details and ensure you have read/write permissions.', 
-                             true);
-            });
-        }
-        
-        // --- EVENT LISTENERS AND MODAL LOGIC ---
-
-        // Category Tabs rendering and handler
-        const categories = ['All', 'Trades', 'Food', 'Health', 'Other'];
-        const tabsContainer = document.getElementById('category-tabs');
-        let currentCategory = 'All';
-
-        categories.forEach(category => {
-            const button = document.createElement('button');
-            button.textContent = category;
-            button.className = 'py-2 px-4 rounded-xl font-semibold transition duration-150 mr-2';
-            button.id = `tab-${category}`;
-            tabsContainer.appendChild(button);
-
-            button.onclick = () => {
-                // Update active state
-                document.querySelectorAll('#category-tabs button').forEach(btn => {
-                    btn.classList.remove('bg-blue-600', 'text-white');
-                    btn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-                });
-                button.classList.add('bg-blue-600', 'text-white');
-                button.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
-
-                currentCategory = category;
-                // Start listening for the new category
-                if (isAuthReady) {
-                    listenForServices(category);
-                } else {
-                    renderStatus('Waiting for connection...', 'Database connection is not yet ready.');
-                }
-            };
-        });
-
-        // Initialize 'All' tab as active
-        document.getElementById('tab-All').click();
-
-        // Modal Logic
-        const addServiceModal = document.getElementById('add-service-modal');
-        const addServiceBtn = document.getElementById('add-service-btn');
-        const cancelAddServiceBtn = document.getElementById('cancel-add-service');
-        const listServiceButton = document.getElementById('list-service-btn');
-
-        addServiceBtn.onclick = () => {
-            if (isAuthReady) {
-                addServiceModal.classList.remove('hidden');
-            } else {
-                // Inform user if not connected
-                console.warn("Cannot add service: Authentication not ready.");
-                renderStatus('Authentication Required', 'Please wait for the app to connect to the database before adding a service.', true);
-            }
-        };
-
-        cancelAddServiceBtn.onclick = () => {
-            addServiceModal.classList.add('hidden');
-        };
-
-        // Submit Logic for New Service
-        listServiceButton.onclick = async () => {
-            const title = document.getElementById('service-title').value.trim();
-            const description = document.getElementById('service-description').value.trim();
-            const category = document.getElementById('service-category').value;
-
-            if (!title || !description) {
-                alert('Please fill in both the Service Name and Description.'); // Using native alert as a last resort simple UI (should be a custom modal in production)
+                console.error("FIREBASE_INITIALIZATION_ERROR:", error);
+                renderState('ERROR', `Startup failed: Firebase initialization error. Details: ${error.message}`);
                 return;
             }
 
-            listServiceButton.textContent = 'Listing...';
-            listServiceButton.disabled = true;
+            // 2. Setup Auth State Listener
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    isAuthReady = true;
+                    
+                    userIdDisplay.textContent = `User ID: ${currentUserId.substring(0, 10)}...`;
+                    console.log(`Firebase user signed in. UID: ${currentUserId}`);
+                    
+                    listenForServices();
+                    renderCategoryTabs(); 
+
+                } else {
+                    // 3. Handle Authentication (Attempt sign-in)
+                    try {
+                        if (initialAuthToken) {
+                            // Canvas: Sign in with custom token
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            // External/Fallback: Sign in anonymously
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        currentUserId = 'AUTH_ERROR';
+                        userIdDisplay.textContent = 'User ID: INIT_ERROR';
+                        isAuthReady = true; 
+                        console.error("FIREBASE_AUTHENTICATION_ERROR:", error);
+                        renderState('ERROR', `Authentication failed. Details: ${error.message}`);
+                    }
+                }
+            });
+        }
+
+        // --- DATA INTERACTION (FIRESTORE) ---
+        
+        /** Listens for real-time updates to the services collection based on the active category. */
+        function listenForServices() {
+            if (!isAuthReady || !db) return;
+
+            const servicesCollectionRef = collection(db, PUBLIC_COLLECTION_PATH);
+            let servicesQuery = query(servicesCollectionRef);
+
+            // Add category filtering if not 'All Services'
+            if (activeCategory !== CATEGORIES[0]) {
+                servicesQuery = query(servicesCollectionRef, where('category', '==', activeCategory));
+            }
+            
+            renderState('LOADING', `Loading ${activeCategory} services...`);
+
+
+            // Setup real-time listener (onSnapshot)
+            const unsubscribe = onSnapshot(servicesQuery, (snapshot) => {
+                try {
+                    const services = [];
+                    snapshot.forEach((doc) => {
+                        services.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    renderServices(services);
+                } catch (error) {
+                    console.error("FIRESTORE_DATA_ERROR: Could not load data.", error);
+                    renderState('ERROR', 'Data Error: Could not load services. Check the console.');
+                }
+            }, (error) => {
+                // This callback handles errors during the snapshot subscription itself
+                console.error("FIRESTORE_SNAPSHOT_ERROR:", error);
+                renderState('ERROR', 'Database Connection Error: Snapshot listener failed. Check network or permissions.');
+            });
+
+            // Note: The unsubscribe function is returned but not explicitly used here. 
+            // In a single-page app, this leak is acceptable.
+            return unsubscribe;
+        }
+
+        /** Adds a new service document to Firestore. */
+        async function addNewService(title, details, category) {
+            if (!isAuthReady || !db || !auth.currentUser) {
+                return { success: false, message: "Authentication required to list a service." };
+            }
+
+            const serviceData = {
+                title: title.trim(),
+                details: details.trim(),
+                category: category,
+                userId: auth.currentUser.uid, 
+                postedDate: serverTimestamp() 
+            };
 
             try {
-                const docRef = await addDoc(collection(db, PUBLIC_COLLECTION_PATH), {
-                    title: title,
-                    description: description,
-                    category: category,
-                    userId: currentUserId, // Store the user ID of the poster
-                    timestamp: serverTimestamp() // Use Firestore's server timestamp
+                await addDoc(collection(db, PUBLIC_COLLECTION_PATH), serviceData);
+                return { success: true };
+            } catch (error) {
+                console.error("ERROR ADDING DOCUMENT:", error);
+                return { success: false, message: `Failed to add service: ${error.message}` };
+            }
+        }
+
+        // --- UI RENDERING & EVENT HANDLERS ---
+        
+        /** Renders the category tabs and attaches click handlers. */
+        function renderCategoryTabs() {
+            categoryTabsContainer.innerHTML = ''; 
+            serviceCategorySelect.innerHTML = ''; 
+
+            CATEGORIES.forEach((category, index) => {
+                // Populate the selection dropdown for the modal (excluding "All Services")
+                if (category !== CATEGORIES[0]) {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    serviceCategorySelect.appendChild(option);
+                }
+
+                // Create the tab button
+                const isActive = category === activeCategory;
+                const button = document.createElement('button');
+                button.textContent = category;
+                button.className = `py-2 px-4 rounded-full font-semibold transition duration-200 shadow-sm flex-shrink-0 ${
+                    isActive 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`;
+                
+                button.addEventListener('click', () => {
+                    if (activeCategory !== category) {
+                        activeCategory = category;
+                        renderCategoryTabs(); 
+                        listenForServices(); 
+                    }
                 });
 
-                console.log("Document written with ID: ", docRef.id);
-                // Clear and close modal on success
-                document.getElementById('service-title').value = '';
-                document.getElementById('service-description').value = '';
-                addServiceModal.classList.add('hidden');
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                // Simple error display
-                alert("Failed to list service. Check console for details.");
-            } finally {
-                listServiceButton.textContent = 'List Service';
-                listServiceButton.disabled = false;
-            }
-        };
-
-        // Initialize the App on window load
-        window.onload = () => {
-             // Optional: Set Firestore log level to debug for console visibility
-            setLogLevel('debug');
-            initFirebaseApp();
-        };
-
-    </script>
-</body>
-</html>
-
+                categoryTabsContainer.appendChild(button);
+            });
+        }
     
