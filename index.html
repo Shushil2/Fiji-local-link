@@ -168,7 +168,7 @@
         <div class="header-card">
             <h1 class="text-3xl font-extrabold text-blue-700">Fiji Local Link</h1>
             <p class="text-gray-500 mt-1 text-sm">Connecting essential services in Fiji.</p>
-            <p id="user-id-display" class="text-xs mt-2 text-gray-400 select-all">(User ID: Loading...)</p>
+            <p id="user-id-display" class="text-xs mt-2 text-gray-400 select-all">(User ID: Waiting for connection...)</p>
         </div>
 
         <!-- Service Categories/Tabs -->
@@ -258,9 +258,9 @@
 
     <!-- Firebase SDK Imports -->
     <script type="module">
-        // IMPORTANT CHANGE: Swapping browserSessionPersistence for browserLocalPersistence
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // NOTE: Removed onAuthStateChanged import as we are no longer using it for the critical startup path
+        import { getAuth, signInAnonymously, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase and State Variables
@@ -302,10 +302,6 @@
         const categoryTabsContainer = document.getElementById('category-tabs');
         const fabButton = document.getElementById('fab-button');
         const addServiceForm = document.getElementById('add-service-form');
-        const serviceCategorySelect = document.getElementById('service-category');
-        const submitServiceBtn = document.getElementById('submit-service-btn');
-        const submitServiceText = document.getElementById('submit-service-text');
-        const submitServiceSpinner = document.getElementById('submit-service-spinner');
 
 
         // --- State Management ---
@@ -338,7 +334,7 @@
                 this.open();
             }
 
-            // Shows a confirmation modal
+            // Shows a confirmation modal (Not used in this version but kept for consistency)
             confirm(title, message, onConfirm) {
                 this.titleElement.textContent = title;
                 this.messageElement.innerHTML = message;
@@ -396,12 +392,13 @@
         // --- Firebase Initialization and Authentication ---
 
         function renderCriticalError(title, message) {
-            // We use the full HTML insertion here to fully replace the stuck UI.
+            // Display full error details to the user and ask them to reload
             return `
                 <div class="flex items-center justify-center p-4 bg-gray-100 z-50 w-full min-h-[300px]">
                     <div class="bg-white rounded-xl p-6 shadow-2xl max-w-sm w-full text-center border-t-4 border-red-600">
                         <h3 class="text-xl font-bold text-red-600 mb-2">${title}</h3>
                         <p class="text-gray-700 mb-4 text-sm">${message}</p>
+                        <p class="text-xs text-gray-500 mb-4">Please try reloading the app.</p>
                         <button class="btn-primary bg-red-600 hover:bg-red-700" onclick="location.reload()">Reload App</button>
                     </div>
                 </div>
@@ -410,13 +407,20 @@
 
         /**
          * Initializes Firebase and ensures the user is authenticated before resolving.
+         * This uses a direct promise resolution from the sign-in methods, with a timeout guard.
          * @returns {Promise<void>} Resolves when authentication is successful, rejects on critical failure.
          */
         function initFirebaseApp() {
             return new Promise(async (resolve, reject) => {
+                // Set a manual timeout to prevent infinite loading if Firebase sign-in gets stuck
+                const timeoutId = setTimeout(() => {
+                    reject(new Error("Authentication Timeout: The attempt to sign in failed to resolve within 5 seconds. This indicates a potential connection issue."));
+                }, 5000);
+
                 try {
                     // --- CRITICAL CHECK: Ensure environment variables are present ---
                     if (!firebaseConfig) {
+                        clearTimeout(timeoutId);
                         return reject(new Error('Configuration Error: Firebase configuration is missing. This application only runs inside the Canvas environment.'));
                     }
                     
@@ -426,17 +430,11 @@
                     
                     setLogLevel('debug');
                     
-                    // CRITICAL FIX: Use browserLocalPersistence instead of Session for more stability
+                    // Use browserLocalPersistence for maximum stability across sessions
                     await setPersistence(auth, browserLocalPersistence);
 
-                    // --- 1. Setup Auth State Listener for Final Confirmation ---
-                    let unsubscribeAuth;
-                    let authResolved = false;
-
-                    // Timeout for the authentication process
-                    const timeoutId = setTimeout(() => {
-                        if (!authResolved) {
-                            if (unsubscribeAuth) unsubscribeAuth();
-                            reject(new Error("Authentication Timeout: Failed to confirm user state within 5 seconds."));
-                        }
-                    }, 
+                    // --- Start Sign-in Process ---
+                    if (initialAuthToken) {
+                        try {
+                            // 1. Attempt custom token sign-in
+                            await signInWithCustomToken(auth, initialAuthToken)
