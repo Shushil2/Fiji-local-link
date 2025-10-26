@@ -114,8 +114,9 @@
         /* Mobile-specific fix for FAB position to center within the max-width container */
         @media (max-width: 420px) {
             .fixed-fab {
+                /* Recalculate to center: left: 50% - (max-width/2 - right_offset) */
                 left: 50%;
-                transform: translateX(calc(420px/2 - 30px)); 
+                transform: translateX(calc(210px - 30px)); /* 420px/2 - 30px */
             }
         }
         /* Style for the Add Service Modal */
@@ -260,8 +261,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         // NOTE: Removed onAuthStateChanged import as we are no longer using it for the critical startup path
-        import { getAuth, signInAnonymously, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, where, setLogLevel, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // NOTE: Removed browserLocalPersistence import as we are no longer using it
+        import { getAuth, signInAnonymously, signInWithCustomToken, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase and State Variables
         let app;
@@ -414,7 +416,7 @@
             return new Promise(async (resolve, reject) => {
                 // Set a manual timeout to prevent infinite loading if Firebase sign-in gets stuck
                 const timeoutId = setTimeout(() => {
-                    reject(new Error("Authentication Timeout: The attempt to sign in failed to resolve within 5 seconds. This indicates a potential connection issue."));
+                    reject(new Error("Authentication Timeout: The attempt to sign in failed to resolve within 5 seconds. This indicates a potential network or environment restriction issue."));
                 }, 5000);
 
                 try {
@@ -430,11 +432,6 @@
                     
                     setLogLevel('debug');
                     
-                    // Use browserLocalPersistence for maximum stability across sessions
-                    await setPersistence(auth, browserLocalPersistence);
-
-                    // --- Start Sign-in Process ---
-                    if (initialAuthToken) {
-                        try {
-                            // 1. Attempt custom token sign-in
-                            await signInWithCustomToken(auth, initialAuthToken)
+                    // IMPORTANT: Removed setPersistence(auth, browserLocalPersistence)
+                    // This often causes hangs in restricted iframe environments (like the Web Page view).
+                    // Default in-memory persistence will be used
