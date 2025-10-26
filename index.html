@@ -114,6 +114,7 @@
                     <path d="M7.93414 7.93414L6.87347 6.87347" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <p class="mt-3 text-gray-600">Connecting to Database...</p>
+                <p id="loading-timer" class="text-xs text-gray-400 mt-1"></p>
             </div>
 
             <div id="critical-error-state" class="hidden status-message bg-red-100 border border-red-400 text-red-700">
@@ -122,7 +123,7 @@
 
             <div id="data-error-state" class="hidden status-message bg-red-100 border border-red-400 text-red-700">
                 <p class="font-bold mb-2">Database Connection Error</p>
-                <p class="text-sm">Could not load services from the database. Please check the console for details and ensure you have read/write permissions.</p>
+                <p class="text-sm">Could not load services from the database. Please check the browser console for details and ensure Firebase Rules allow public read access.</p>
                 <button onclick="window.location.reload()" class="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition">Reload App</button>
             </div>
 
@@ -151,8 +152,8 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, onSnapshot, setDoc, doc, Timestamp, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, setDoc, doc, Timestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Variables
         let app = null;
@@ -160,8 +161,9 @@
         let auth = null;
         let userId = 'Loading...';
         let currentCategory = 'All';
-        let isAuthReady = false; // New flag to track readiness
+        let isAuthReady = false;
 
+        // Configuration variables injected by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -178,11 +180,12 @@
         const servicesList = document.getElementById('services-list');
         const categoryTabsEl = document.getElementById('category-tabs');
         const fabButton = document.getElementById('fab');
+        const loadingTimerEl = document.getElementById('loading-timer');
 
         const categories = ['All', 'Trades', 'Food', 'Health', 'Other'];
 
-        // --- Utility Functions for Custom Modals ---
-        
+        // --- Utility Functions for Custom Modals and UI State ---
+
         function showAlert(message) {
             const existingModal = document.getElementById('custom-modal');
             if (existingModal) existingModal.remove();
@@ -201,7 +204,7 @@
 
         function showAddServiceModal() {
             if (!isAuthReady) {
-                showAlert("System still initializing. Please wait a moment for the database connection to complete.");
+                showAlert("System still initializing. Please wait a moment for the database connection to complete, or check for critical errors.");
                 return;
             }
 
@@ -228,7 +231,7 @@
                         <div class="mb-3">
                             <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                             <select id="category" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                ${categories.map(c => `<option value="${c}">${c}</option>`).filter(c => c.indexOf('All') === -1).join('')}
+                                ${categories.map(c => `<option value="${c}" ${c === 'All' ? 'disabled' : ''}>${c}</option>`).filter(c => c.indexOf('All') === -1).join('')}
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -292,8 +295,6 @@
             }
         }
 
-        // --- UI Rendering Functions ---
-
         /**
          * Hides all content states and shows only the specified one.
          */
@@ -326,14 +327,14 @@
                     <p class="text-sm text-gray-600 mb-2">${service.description}</p>
                     <div class="flex flex-wrap gap-2 text-xs">
                         <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">${service.category}</span>
-                        ${service.contact ? `<span class="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                        ${service.contact ? `<a href="tel:${service.contact}" class="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold hover:bg-green-200 transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="inline w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6.7-6.7A19.79 19.79 0 0 1 2 4.18 2 2 0 0 1 4.1 2h3.08a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                            ${service.contact}
-                        </span>` : ''}
-                        ${service.email ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">
+                            Call: ${service.contact}
+                        </a>` : ''}
+                        ${service.email ? `<a href="mailto:${service.email}" class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold hover:bg-yellow-200 transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="inline w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                            ${service.email}
-                        </span>` : ''}
+                            Email
+                        </a>` : ''}
                         <span class="text-gray-500 ml-auto">Posted: ${new Date(service.timestamp).toLocaleDateString()}</span>
                     </div>
                 `;
@@ -347,7 +348,7 @@
             categories.forEach(category => {
                 const button = document.createElement('button');
                 button.textContent = category;
-                button.className = 'px-4 py-2 rounded-full font-semibold transition-colors';
+                button.className = 'px-4 py-2 rounded-full font-semibold transition-colors text-sm';
                 if (category === currentCategory) {
                     button.classList.add('bg-blue-600', 'text-white', 'shadow-md');
                 } else {
@@ -375,11 +376,4 @@
                 return;
             }
 
-            if (unsubscribeServices) {
-                unsubscribeServices(); // Detach previous listener
-            }
-
-            // The 'db' object should now be available thanks to the initialization promise
-            showState(loadingState);
-
-            const servicesCollectionRef = c
+    
