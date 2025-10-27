@@ -193,7 +193,6 @@
         const color = type === 'error' ? 'bg-red-50 border-red-400 text-red-800' : 'bg-white border-gray-200 text-gray-800';
         
         // Only update contentArea if it's currently showing a status/loading screen
-        // or if it's an error. We don't want to overwrite the service list with a status.
         if (type === 'error' || !isAuthReady) {
              contentArea.innerHTML = `
                 <div id="status-card" class="card ${color} border text-center py-10">
@@ -414,7 +413,7 @@
         if (!isAuthReady) {
             console.error("Connection timed out. Assuming configuration variable issue on live site.");
             renderStatus('error', 
-                "The app is stuck connecting. This is likely due to the Firebase configuration details not being available on the live GitHub page."
+                "The app is stuck connecting. **This is normal outside of the Canvas editor.** The app requires specific, secure credentials (provided by Canvas) to connect to the database. It works perfectly in the editor, but cannot load data on the live web link without them."
             );
         }
     }
@@ -431,8 +430,9 @@
             renderStatus('loading', 'Initializing Firebase services...');
             
             if (!firebaseConfigString) {
-                // This means the app is not running in the Canvas environment
-                throw new Error("Missing Firebase configuration. Cannot initialize services outside Canvas.");
+                // If the config string is missing, immediately run the timeout logic
+                checkConnectionTimeout();
+                return;
             }
             
             // 1. Initialize App & Services
@@ -454,4 +454,4 @@
 
             if (user && user.uid) {
                 currentUserId = user.uid;
-                isAuthReady = true; 
+                isAuthReady = tru
