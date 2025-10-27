@@ -17,7 +17,7 @@
             margin: 0 auto;
             min-height: 100vh;
             background-color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 2, 4, 0.06);
         }
         .header-bar {
             background-color: #1e40af; /* Blue-800 */
@@ -413,7 +413,8 @@
             renderStatus('loading', 'Initializing Firebase services...');
             
             if (!firebaseConfigString) {
-                throw new Error("Missing Firebase configuration. Check if this is running in a secure environment.");
+                // This error usually only happens outside the Canvas environment
+                throw new Error("Missing Firebase configuration. Check environment variables.");
             }
             
             // 1. Initialize App & Services
@@ -435,25 +436,22 @@
                 user = userCredential.user;
             }
 
-            if (user) {
+            if (user && user.uid) {
                 currentUserId = user.uid;
                 isAuthReady = true;
                 userIdDisplay.textContent = `User ID: ${currentUserId}`;
-                
-                // 3. Setup UI and Data Listener
+                console.log("Authentication successful. User ID:", currentUserId);
+
+                // --- KEY CHANGE HERE ---
+                // 3. Setup UI and Data Listener ONLY AFTER successful auth
                 setupCategoryFilters();
                 setupRealtimeListener();
-                setupEventListeners(); // <-- NOW WE ATTACH ALL LISTENERS
+                setupEventListeners();
+                
             } else {
-                 throw new Error("Authentication failed: User object is null.");
+                 throw new Error("Authentication failed: User object is invalid after sign-in attempt.");
             }
 
         } catch (error) {
             console.error("FATAL INITIALIZATION ERROR:", error);
-            // Display a user-friendly error message
-            renderStatus('error', `Startup failed: ${error.message}. Please check console for configuration details.`);
-        }
-    }
-
-    // Start the process immediately when the window loads.
-    win
+            // Display a user-friendly e
