@@ -194,11 +194,11 @@
         
         // Only update contentArea if it's currently showing a status/loading screen
         // or if it's an error. We don't want to overwrite the service list with a status.
-        if (type === 'error' || contentArea.querySelector('#status-card')) {
+        if (type === 'error' || !isAuthReady) {
              contentArea.innerHTML = `
                 <div id="status-card" class="card ${color} border text-center py-10">
                     <div class="text-4xl mb-4">${icon}</div>
-                    <h3 class="text-xl font-semibold">${type === 'error' ? 'Error' : 'Status'}</h3>
+                    <h3 class="text-xl font-semibold">${type === 'error' ? 'Connection Error' : 'Status'}</h3>
                     <p class="mt-2 text-sm">${message}</p>
                     ${type === 'error' ? `
                         <button onclick="window.location.reload()" class="mt-4 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition">
@@ -404,17 +404,35 @@
         serviceForm.addEventListener('submit', handleFormSubmit);
     }
 
+    // --- FALLBACK CONNECTION CHECK ---
+
+    /** * Checks if authentication succeeded after a delay. 
+     * This is a safeguard for when the Canvas environment variables are unavailable 
+     * in the published GitHub Pages environment.
+     */
+    function checkConnectionTimeout() {
+        if (!isAuthReady) {
+            console.error("Connection timed out. Assuming configuration variable issue on live site.");
+            renderStatus('error', 
+                "The app is stuck connecting. This is likely due to the Firebase configuration details not being available on the live GitHub page."
+            );
+        }
+    }
+
 
     // --- FIREBASE INITIALIZATION & AUTHENTICATION ---
 
     /** Initializes Firebase services and performs authentication asynchronously. */
     async function initializeAndAuthenticate() {
+        // Start a timeout check immediately, only runs if isAuthReady remains false
+        setTimeout(checkConnectionTimeout, 5000); // 5 second timeout
+
         try {
             renderStatus('loading', 'Initializing Firebase services...');
             
             if (!firebaseConfigString) {
-                // This error usually only happens outside the Canvas environment
-                throw new Error("Missing Firebase configuration. Check environment variables.");
+                // This means the app is not running in the Canvas environment
+                throw new Error("Missing Firebase configuration. Cannot initialize services outside Canvas.");
             }
             
             // 1. Initialize App & Services
@@ -427,31 +445,13 @@
             // 2. Handle Authentication
             let user;
             if (initialAuthToken) {
-                // Wait for custom token sign-in
                 const userCredential = await signInWithCustomToken(auth, initialAuthToken);
                 user = userCredential.user;
             } else {
-                // Fallback to anonymous sign-in
                 const userCredential = await signInAnonymously(auth);
                 user = userCredential.user;
             }
 
             if (user && user.uid) {
                 currentUserId = user.uid;
-                isAuthReady = true;
-                userIdDisplay.textContent = `User ID: ${currentUserId}`;
-                console.log("Authentication successful. User ID:", currentUserId);
-
-                // --- KEY CHANGE HERE ---
-                // 3. Setup UI and Data Listener ONLY AFTER successful auth
-                setupCategoryFilters();
-                setupRealtimeListener();
-                setupEventListeners();
-                
-            } else {
-                 throw new Error("Authentication failed: User object is invalid after sign-in attempt.");
-            }
-
-        } catch (error) {
-            console.error("FATAL INITIALIZATION ERROR:", error);
-            // Display a user-friendly e
+                isAuthReady = true; 
