@@ -31,6 +31,7 @@
         }
         .tab-button {
             transition: all 0.2s ease;
+            white-space: nowrap; /* Prevents text wrap on small buttons */
         }
     </style>
 </head>
@@ -141,9 +142,11 @@
     let currentUserId = 'Loading...';
     let isAuthReady = false;
     let currentCategory = 'All Services';
+    let unsubscribeListener = null; // NEW: Holds the active Firestore listener unsubscribe function
 
     // Global variables provided by the environment
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    // IMPORTANT: Ensure firebaseConfig is not null/undefined if running outside Canvas
     const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -304,18 +307,17 @@
             
             // Wait for auth state to ensure we don't sign in twice if already logged in
             await new Promise(resolve => {
-                const unsubscribe = onAuthStateChanged(auth, user => {
-                    // This listener fires on initialization and on sign-in/sign-out
+                const unsubscribeAuthCheck = onAuthStateChanged(auth, user => {
                     if (user) {
                         currentUserId = user.uid;
                         isAuthReady = true;
                         document.getElementById('user-id').textContent = `(User ID: ${currentUserId})`;
                         console.log('User already signed in:', currentUserId);
-                        unsubscribe();
+                        unsubscribeAuthCheck();
                         resolve();
                     } else {
                         // User is NOT signed in, proceed to sign in process
-                        unsubscribe(); 
+                        unsubscribeAuthCheck(); 
                         resolve(); 
                     }
                 });
@@ -325,22 +327,20 @@
                 if (initialAuthToken) {
                     console.log('Attempting sign-in with custom token...');
                     await signInWithCustomToken(auth, initialAuthToken);
-                    // onAuthStateChanged listener will fire after successful sign-in
                 } else {
                     console.log('No custom token found. Signing in anonymously...');
                     await signInAnonymously(auth);
-                    // onAuthStateChanged listener will fire after successful sign-in
                 }
             }
             
-            // Re-setup the onAuthStateChanged listener for runtime changes and to ensure we wait for the final state
+            // 4. Setup primary Auth State Listener (for post-sign-in updates)
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUserId = user.uid;
                     isAuthReady = true;
                     document.getElementById('user-id').textContent = `(User ID: ${currentUserId})`;
                     console.log('Authentication successful. User ID:', currentUserId);
-                    // Start listening for data once authenticated
+                    // Start listening for data once authenticated and ready
                     setupRealtimeDataListener(currentCategory);
                 } else {
                     currentUserId = 'Authentication Failed';
@@ -363,12 +363,19 @@
 
     /**
      * Sets up a real-time listener for the services collection based on the selected category.
+     * Manages unsubscribing from the previous listener.
      * @param {string} category - The category to filter by ('All Services' for no filter).
      */
     function setupRealtimeDataListener(category) {
         if (!isAuthReady || !db) {
             console.warn('Cannot set up listener: Auth not ready or DB not initialized.');
             return;
+        }
+
+        // 1. Clean up previous listener if it exists
+        if (unsubscribeListener) {
+            unsubscribeListener();
+            console.log('Previous Firestore listener unsubscribed.');
         }
 
         console.log(`Setting up listener for category: ${category}`);
@@ -386,12 +393,11 @@
 
         renderStatus('Fetching services...');
         
-        // This attaches the real-time listener
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        // 2. Attach new real-time listener and store the unsubscribe function globally
+        unsubscribeListener = onSnapshot(q, (snapshot) => {
             const services = [];
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                // We add the document ID as well, though not used in this iteration
                 services.push({ id: doc.id, ...data });
             });
 
@@ -400,12 +406,8 @@
         }, (error) => {
             console.error('Firestore Realtime Data Error:', error);
             renderStatus('Could not load services in real-time. Please check the console for details and ensure you have read/write permissions.', true);
-            showCustomModal('Data Error', 'Could not load services in real-time. Please check the console for details.', true);
+            showCustomModal('Data Error', 'Could not load services in real-time. Check console for details.', true);
         });
-
-        // The listener is set up. You might want to store and call 'unsubscribe' when the component unmounts 
-        // or the category changes, but for simplicity in a single HTML file, we'll let it run.
-        // If we were switching categories, we would call a previous unsubscribe function here.
     }
 
 
@@ -415,4 +417,6 @@
     function handleCategoryChange(newCategory) {
         // First, update the active button styles
         const tabs = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
-        tabs.forEach(t
+        tabs.forEach(tabName => {
+            const buttonId = `tab-${tabName.toLowerCase().replace(' ', '-')}`;
+    
