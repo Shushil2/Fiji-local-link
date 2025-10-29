@@ -4,426 +4,258 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fiji Local Link</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #0b57d0; /* Blue */
-            --background-color: #f7f9fc;
-            --card-bg-color: #ffffff;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1e40af', // Darker blue for a professional look
+                    },
+                }
+            }
         }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
-        }
-        .main-header {
-            background-color: var(--primary-color);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .tab-active {
-            background-color: var(--primary-color);
-            color: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .tab-inactive {
-            background-color: #e5e7eb;
-            color: #4b5563;
-        }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            background-color: #f3f4f6;
         }
     </style>
 </head>
-<body class="p-0 m-0">
-    <div id="app" class="min-h-screen flex flex-col">
+<body class="min-h-screen">
 
-        <!-- Header -->
-        <header id="app-header" class="main-header p-4 text-white sticky top-0 z-10">
-            <div class="max-w-xl mx-auto">
-                <h1 class="text-xl font-bold">Fiji Local Link</h1>
-                <p class="text-sm">Connecting essential services in Fiji.</p>
-                <div id="user-info" class="text-xs mt-1 opacity-80">User ID: Loading...</div>
+    <!-- Header -->
+    <header class="bg-primary-blue text-white shadow-lg p-4 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-xl font-bold">Fiji Local Link</h1>
+            <p id="user-id-display" class="text-xs opacity-75 mt-1">User ID: Loading...</p>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-4xl mx-auto p-4">
+        <div id="status-message" class="text-center p-6 bg-white rounded-xl shadow-lg mt-4">
+            <div id="loading-spinner" class="animate-spin rounded-full h-12 w-12 border-4 border-primary-blue border-t-transparent mx-auto"></div>
+            <p class="mt-4 text-gray-600 font-semibold">Connecting to Database...</p>
+        </div>
+
+        <div id="app-content" class="hidden">
+            <!-- Simplified Content based on screenshots -->
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Available Services</h2>
+            <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+                <button class="px-4 py-2 bg-primary-blue text-white rounded-full text-sm shadow-md">All Services</button>
+                <button class="px-4 py-2 bg-white text-gray-700 rounded-full text-sm border hover:bg-gray-100">Trades</button>
+                <button class="px-4 py-2 bg-white text-gray-700 rounded-full text-sm border hover:bg-gray-100">Food</button>
+                <!-- Add more categories here -->
             </div>
-        </header>
-
-        <!-- Category Tabs -->
-        <div id="category-tabs" class="bg-white py-3 shadow-md sticky top-[80px] z-10">
-            <div class="max-w-xl mx-auto px-4 flex space-x-2 overflow-x-auto whitespace-nowrap">
-                <!-- Tabs will be rendered here by JavaScript -->
+            <div id="services-list" class="space-y-4">
+                <p class="text-center text-gray-500 p-8 border border-dashed rounded-lg">No services listed yet. Be the first to list a service!</p>
             </div>
         </div>
 
-        <!-- Main Content Area -->
-        <main class="flex-grow p-4">
-            <div class="max-w-xl mx-auto">
-                <div id="content-area" class="bg-white rounded-xl shadow-lg p-6 min-h-[300px] flex flex-col items-center justify-center">
-                    <!-- Dynamic content (Services / Loading / Error) loads here -->
-                </div>
+        <!-- Floating Action Button (FAB) for Add Service -->
+        <button id="fab" class="fixed bottom-6 right-6 bg-primary-blue text-white w-14 h-14 rounded-full shadow-xl hover:bg-blue-800 transition-transform active:scale-95 text-2xl font-bold flex items-center justify-center">+</button>
+        
+        <!-- Custom Modal for Alerts/Error Messages (Replaces alert()) -->
+        <div id="modal-container" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div id="modal-content" class="bg-white p-6 rounded-lg shadow-2xl w-11/12 max-w-sm">
+                <h3 id="modal-title" class="text-xl font-bold mb-3 text-red-600">Error</h3>
+                <p id="modal-body" class="text-gray-700 mb-4">An unknown error occurred.</p>
+                <button onclick="closeModal()" class="w-full bg-primary-blue text-white py-2 rounded-lg font-semibold hover:bg-blue-700">OK</button>
             </div>
-        </main>
-
-        <!-- Floating Action Button -->
-        <button id="add-service-btn" class="fixed bottom-6 right-6 z-20 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-2xl hover:bg-blue-700 transition duration-300" onclick="showModal('add-service-modal')">
-            <i class="fas fa-plus"></i>
-        </button>
-
-        <!-- Footer (Optional) -->
-        <footer class="text-center text-xs text-gray-500 p-3 mt-4">
-            &copy; 2025 Fiji Local Link. All rights reserved.
-        </footer>
-
-    </div>
-
-    <!-- Modal for Adding Service -->
-    <div id="add-service-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4" onclick="if(event.target.id === 'add-service-modal') hideModal('add-service-modal')">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100 duration-300">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-xl font-semibold text-gray-800">List a New Service</h2>
-                <button class="text-gray-500 hover:text-gray-700" onclick="hideModal('add-service-modal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <form id="add-service-form">
-                <div class="mb-4">
-                    <label for="service-title" class="block text-sm font-medium text-gray-700 mb-1">Service Title (e.g., John's Plumbing)</label>
-                    <input type="text" id="service-title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                
-                <div class="mb-4">
-                    <label for="service-description" class="block text-sm font-medium text-gray-700 mb-1">Description & Contact Info</label>
-                    <textarea id="service-description" required rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-                
-                <div class="mb-6">
-                    <label for="service-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select id="service-category" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white">
-                        <option value="Trades">Trades (Plumbing, Electrical, Carpentry)</option>
-                        <option value="Food">Food (Restaurants, Takeaways, Delivery)</option>
-                        <option value="Health">Health (Doctors, Pharmacies, Clinics)</option>
-                        <option value="Other">Other (Misc. Services)</option>
-                    </select>
-                </div>
-                
-                <button type="submit" class="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300">
-                    Submit Service Listing
-                </button>
-            </form>
-            <div id="modal-message" class="mt-4 text-center text-sm hidden"></div>
         </div>
-    </div>
-
+    </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, setDoc, doc, onSnapshot, collection, query, limit, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Set Firebase logging level to Debug
-        setLogLevel('Debug');
-        
-        // --- GLOBAL VARIABLES (Passed by Canvas Environment) ---
-        // We use a fallback if the app runs outside Canvas (e.g., GitHub Pages)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        // Global Firebase instances and user details
         let app;
         let db;
         let auth;
-        let userId = 'Loading...';
-        let isFirebaseReady = false;
-        let currentCategory = 'All Services';
-
-        // --- DOM Elements ---
-        const contentArea = document.getElementById('content-area');
-        const userInfo = document.getElementById('user-info');
-        const tabsContainer = document.querySelector('#category-tabs .max-w-xl');
-        const addServiceForm = document.getElementById('add-service-form');
-        const modalMessage = document.getElementById('modal-message');
-        const MODAL_ID = 'add-service-modal';
-
-
-        // --- UTILITY FUNCTIONS ---
-
-        function showModal(id) {
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function hideModal(id) {
-            document.getElementById(id).classList.add('hidden');
-            modalMessage.classList.add('hidden'); // Clear message on close
-            addServiceForm.reset();
-        }
-
-        /**
-         * Renders the status, loading spinner, or error message in the content area.
-         * @param {string} status 'loading', 'loaded', or 'error'.
-         * @param {string} message The message to display (for loaded or error states).
-         */
-        function renderStatus(status, message = '') {
-            contentArea.innerHTML = '';
-            contentArea.classList.add('justify-center', 'items-center', 'text-center');
-
-            if (status === 'loading') {
-                contentArea.innerHTML = `
-                    <div class="loading-spinner"></div>
-                    <p class="mt-4 text-gray-600">Connecting to Database...</p>
-                `;
-            } else if (status === 'error') {
-                contentArea.innerHTML = `
-                    <div class="text-red-600 text-4xl mb-4"><i class="fas fa-exclamation-triangle"></i></div>
-                    <h2 class="text-xl font-bold text-red-700">Database Connection Error</h2>
-                    <p class="mt-2 text-sm text-gray-600">${message}</p>
-                    <button onclick="window.location.reload()" class="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Reload App</button>
-                `;
-            } else if (status === 'loaded') {
-                contentArea.innerHTML = `
-                    <div class="text-gray-400 text-4xl mb-4"><i class="far fa-clipboard"></i></div>
-                    <p class="text-lg font-semibold text-gray-700">No services found in this category.</p>
-                    <p class="text-sm text-gray-500">Be the first to list a service!</p>
-                `;
-            }
-        }
-
-        /**
-         * Renders the list of services in the content area.
-         * @param {Array} services 
-         */
-        function renderServices(services) {
-            contentArea.classList.remove('justify-center', 'items-center');
-            
-            if (services.length === 0) {
-                renderStatus('loaded');
-                return;
-            }
-
-            contentArea.innerHTML = services.map(service => `
-                <div class="bg-white p-4 rounded-xl shadow-md mb-4 border border-gray-100 hover:shadow-lg transition">
-                    <h3 class="text-lg font-bold text-gray-800">${service.title}</h3>
-                    <p class="text-sm text-gray-600 mt-1 whitespace-pre-wrap">${service.description}</p>
-                    <div class="mt-2 flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-                        <span class="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-medium">${service.category}</span>
-                        <span>Posted: ${new Date(service.timestamp).toLocaleDateString()}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        /**
-         * Renders the category tabs and attaches click listeners.
-         */
-        function renderTabs() {
-            const categories = ['All Services', 'Trades', 'Food', 'Health', 'Other'];
-            tabsContainer.innerHTML = categories.map(cat => `
-                <button class="tab-button inline-block px-4 py-2 text-sm font-medium rounded-full transition duration-150 ${cat === currentCategory ? 'tab-active' : 'tab-inactive'}" data-category="${cat}">
-                    ${cat}
-                </button>
-            `).join('');
-
-            tabsContainer.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', () => {
-                    const newCategory = button.getAttribute('data-category');
-                    if (newCategory !== currentCategory) {
-                        currentCategory = newCategory;
-                        renderTabs();
-                        if (isFirebaseReady) {
-                            listenForServices(db, currentCategory);
-                        }
-                    }
-                });
-            });
-        }
+        let userId = 'loading-user';
         
-        // --- FIREBASE LISTENERS AND SETUP ---
+        // Use the Firebase configuration from your account details (Screenshot_20251027_075741_Chrome.jpg)
+        const YOUR_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyC0KD2eYK3UT3Cuynda7HDzV9ROY--YDxh8",
+            authDomain: "fijilocallink.firebaseapp.com",
+            projectId: "fijilocallink",
+            storageBucket: "fijilocallink.appspot.com",
+            messagingSenderId: "246057187129",
+            appId: "1:246057187129:web:0ce25c1aa059b360badaee8"
+        };
 
-        /**
-         * Sets up the real-time listener for services based on the current category.
-         * @param {Firestore} db 
-         * @param {string} category 
-         */
-        function listenForServices(db, category) {
-            if (!db) {
-                console.error("Firestore DB instance is not available.");
-                return;
-            }
-            
-            // Path to public data: /artifacts/{appId}/public/data/services
-            const servicesRef = collection(db, `artifacts/${appId}/public/data/services`);
-            let q;
+        // --- Core Environment Variable Handling ---
+        // These variables are provided by the Canvas environment for robust operation.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : YOUR_FIREBASE_CONFIG.projectId;
+        const firebaseConfig = typeof __firebase_config !== 'undefined'
+            ? JSON.parse(__firebase_config)
+            : YOUR_FIREBASE_CONFIG;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Enable Firestore Debug logging
+        setLogLevel('debug');
 
-            if (category === 'All Services') {
-                // Fetch all documents
-                q = query(servicesRef);
-            } else {
-                // Filter by category
-                q = query(servicesRef, where('category', '==', category));
-            }
-
-            // Real-time listener for the query
-            onSnapshot(q, (snapshot) => {
-                const services = [];
-                snapshot.forEach((doc) => {
-                    services.push({ id: doc.id, ...doc.data() });
-                });
-                // Sort by timestamp (most recent first)
-                services.sort((a, b) => b.timestamp - a.timestamp);
-                renderServices(services);
-            }, (error) => {
-                console.error("Error listening to services:", error);
-                // If the app is already loaded, show a less critical error
-                if (isFirebaseReady) {
-                    contentArea.innerHTML = `<p class="text-red-500 mt-4">Error fetching service list. Check console for details.</p>`;
-                } else {
-                    renderStatus('error', 'Failed to retrieve service data. Check security rules.');
-                }
-            });
+        // --- UI Utility Functions ---
+        function showModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = message;
+            document.getElementById('modal-container').classList.remove('hidden');
         }
 
-        /**
-         * Initializes Firebase and handles authentication.
-         */
-        async function initializeFirebase() {
-            renderStatus('loading');
-            renderTabs();
+        function closeModal() {
+            document.getElementById('modal-container').classList.add('hidden');
+        }
 
-            // 1. Check for Config
-            if (!firebaseConfig) {
-                renderStatus('error', 'Firebase configuration keys are missing. This usually happens when the app is run outside a secure environment like Canvas.');
-                console.error('FIREBASE CRITICAL ERROR: Firebase config is missing.');
-                return;
+        function renderStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status-message');
+            const spinner = document.getElementById('loading-spinner');
+            const appContent = document.getElementById('app-content');
+            
+            statusDiv.innerHTML = `<p class="mt-4 text-center font-semibold ${isError ? 'text-red-600' : 'text-gray-600'}">${message}</p>`;
+            if (isError) {
+                statusDiv.classList.remove('bg-white');
+                statusDiv.classList.add('bg-red-100', 'border-red-500', 'border');
+            } else {
+                statusDiv.classList.remove('bg-red-100', 'border-red-500', 'border');
+                statusDiv.classList.add('bg-white');
             }
+            appContent.classList.add('hidden');
+        }
 
+        function renderApp() {
+            document.getElementById('status-message').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+        }
+
+        // --- Firebase Initialization and Authentication ---
+
+        async function initializeFirebase() {
             try {
-                // 2. Initialize App and Services
+                // 1. Initialize App and Services
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
-                // IMPORTANT: Set persistence for a better user experience on refresh/re-open
-                await setPersistence(auth, browserSessionPersistence);
                 
-                // 3. Handle Authentication (Canvas Token vs. Live Anon)
-                let authPromise;
+                // Set persistence for real-world usage
+                await setPersistence(auth, browserSessionPersistence);
 
+                let authAttempted = false;
+
+                // 2. Custom Token or Anonymous Sign-In
                 if (initialAuthToken) {
-                    // Canvas Environment: Use the provided custom token
-                    authPromise = signInWithCustomToken(auth, initialAuthToken).catch(e => {
-                        console.warn("Custom token sign-in failed, trying anonymous sign-in instead.", e);
-                        return signInAnonymously(auth);
-                    });
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        authAttempted = true;
+                    } catch (error) {
+                        console.error("Custom Token Sign-In Failed:", error);
+                        // If custom token fails, fall back to anonymous sign-in
+                        await signInAnonymously(auth);
+                        authAttempted = true;
+                    }
                 } else {
-                    // Live Environment: Sign in anonymously
-                    authPromise = signInAnonymously(auth);
+                    // Sign in anonymously if no custom token is provided
+                    await signInAnonymously(auth);
+                    authAttempted = true;
                 }
 
-                await authPromise;
-                
-                // 4. Set up Auth State Listener and Start Data Listeners
+                // 3. Set up Auth State Listener (handles both successful sign-in types)
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        userInfo.innerHTML = `User ID: ${userId.substring(0, 10)}...`;
-                        console.log("Firebase initialized, user signed in.", userId);
+                        document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                        console.log("Firebase Initialized and user signed in:", userId);
+                        
+                        // Start listening for data (Public services)
+                        listenForServices();
+                        renderApp();
 
-                        if (!isFirebaseReady) {
-                            isFirebaseReady = true;
-                            // Start listening for data immediately after successful auth
-                            listenForServices(db, currentCategory);
-                        }
-                    } else {
-                        // This should ideally not happen after a successful sign-in attempt
-                        // but handles session expiration/logout gracefully.
-                        console.warn("Auth state changed, user is null. Attempting re-sign-in.");
-                        if (!isFirebaseReady) {
-                           renderStatus('error', 'Authentication failed during initialization.');
-                        }
+                        // Example of saving private data (run once)
+                        // saveInitialPrivateData(user.uid);
+
+                    } else if (authAttempted) {
+                        // This block should ideally not be hit if auth was successful, but handles sign-out events.
+                        renderStatus("Authentication failed. Please check the security rules and ensure your custom token is valid.", true);
                     }
                 });
-
+                
             } catch (error) {
-                console.error("FIREBASE INITIALIZATION ERROR:", error);
-                renderStatus('error', `Startup failed: ${error.message}. Please check your configuration and network.`);
+                console.error("FATAL INITIALIZATION ERROR:", error);
+                renderStatus(`Startup failed: ${error.message}. Check your configuration and network.`, true);
             }
         }
 
-        /**
-         * Handles the form submission for adding a new service.
-         * @param {Event} e 
-         */
-        async function handleAddService(e) {
-            e.preventDefault();
-            
-            if (!isFirebaseReady) {
-                modalMessage.innerHTML = 'System not ready. Please wait for initialization.';
-                modalMessage.classList.remove('hidden');
+        // --- Firestore Data Operations ---
+
+        function listenForServices() {
+            // Path: /artifacts/{appId}/public/data/services/{documentId}
+            const publicServicesRef = collection(db, 'artifacts', appId, 'public/data/services');
+            const q = query(publicServicesRef, limit(10)); // Example: limit to 10 services
+
+            onSnapshot(q, (snapshot) => {
+                const servicesListDiv = document.getElementById('services-list');
+                let servicesHtml = '';
+                
+                if (snapshot.empty) {
+                    servicesHtml = '<p class="text-center text-gray-500 p-8 border border-dashed rounded-lg">No services listed yet. Be the first to list a service!</p>';
+                } else {
+                    snapshot.forEach(doc => {
+                        const service = doc.data();
+                        // Basic Service Card rendering
+                        servicesHtml += `
+                            <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-primary-blue">
+                                <h3 class="text-lg font-bold text-gray-800">${service.title || 'Untitled Service'}</h3>
+                                <p class="text-sm text-gray-600 mt-1">${service.description || 'No description provided.'}</p>
+                                <span class="inline-block mt-2 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">${service.category || 'Other'}</span>
+                            </div>
+                        `;
+                    });
+                }
+                servicesListDiv.innerHTML = servicesHtml;
+            }, (error) => {
+                console.error("Error listening to services:", error);
+                // Only show a non-fatal error, keep the app running
+                showModal("Data Error", `Could not load services. Check security rules or network: ${error.message}`);
+            });
+        }
+        
+        // Example function for saving data (can be linked to the FAB later)
+        async function saveExampleService() {
+            if (!db || !userId) {
+                showModal("Auth Required", "Please wait for authentication to complete before submitting.");
                 return;
             }
-
-            const title = document.getElementById('service-title').value.trim();
-            const description = document.getElementById('service-description').value.trim();
-            const category = document.getElementById('service-category').value;
-            const submitButton = e.submitter;
             
-            submitButton.disabled = true;
-            submitButton.innerHTML = 'Submitting...';
-            modalMessage.classList.add('hidden');
-            modalMessage.classList.remove('text-red-600', 'text-green-600');
+            // Path: /artifacts/{appId}/public/data/services/new-service
+            const serviceDocRef = doc(db, 'artifacts', appId, 'public/data/services', 'example-service-' + Date.now());
 
             try {
-                const newService = {
-                    title: title,
-                    description: description,
-                    category: category,
-                    userId: userId, // Record the user who listed the service
-                    timestamp: Date.now()
-                };
-
-                // Save to the public collection: /artifacts/{appId}/public/data/services
-                const servicesRef = collection(db, `artifacts/${appId}/public/data/services`);
-                await addDoc(servicesRef, newService);
-
-                modalMessage.innerHTML = 'Service listed successfully! Thank you.';
-                modalMessage.classList.add('text-green-600');
-                modalMessage.classList.remove('hidden');
-                
-                // Clear the form after a short delay
-                setTimeout(() => {
-                    hideModal(MODAL_ID);
-                }, 1500);
-
+                await setDoc(serviceDocRef, {
+                    title: "John's Plumbing Service",
+                    description: "Emergency plumbing repairs, 24/7. Call 555-1234.",
+                    category: "Trades",
+                    userId: userId,
+                    timestamp: new Date().toISOString()
+                });
+                showModal("Success", "Example service saved successfully to public data!");
             } catch (error) {
-                console.error("Error adding document:", error);
-                modalMessage.innerHTML = `Error: Failed to list service. Check security rules and console.`;
-                modalMessage.classList.add('text-red-600');
-                modalMessage.classList.remove('hidden');
-            } finally {
-                submitButton.disabled = false;
-                submitButton.innerHTML = 'Submit Service Listing';
+                console.error("Error adding service:", error);
+                showModal("Submission Error", `Failed to save service: ${error.message}. Check your security rules.`);
             }
         }
 
-        // --- Event Listeners and Initial Call ---
+        // --- Main Execution ---
         window.onload = initializeFirebase;
-        addServiceForm.addEventListener('submit', handleAddService);
+        
+        // Attach click listener to the FAB
+        document.getElementById('fab').addEventListener('click', saveExampleService);
 
-        // Make functions globally available for inline HTML events
-        window.showModal = showModal;
-        window.hideModal = hideModal;
-        window.renderStatus = renderStatus; // For the reload button
     </script>
 </body>
 </html>
 
-                    
