@@ -113,9 +113,11 @@
         let servicesData = [];
         let currentCategory = 'All Services';
 
-        // Set your Firebase configuration as a JSON string
+        // NOTE: The API key below is intentionally left empty. 
+        // We will prioritize the __firebase_config environment variable 
+        // which contains the secure and correct keys from the host platform.
         const YOUR_FIREBASE_CONFIG_JSON = `{
-            "apiKey": "AIzaSyC0KD2eYK3UT3Cuynda7HDzV9ROY--YDxh8",
+            "apiKey": "", 
             "authDomain": "fijilocallink.firebaseapp.com",
             "projectId": "fijilocallink",
             "storageBucket": "fijilocallink.appspot.com",
@@ -131,13 +133,15 @@
             // Priority 1: Canvas provided config (parsed from string)
             if (typeof __firebase_config !== 'undefined') {
                 firebaseConfig = JSON.parse(__firebase_config);
+                console.log("Using environment-provided Firebase config.");
             } else {
                 // Priority 2: Hardcoded config (parsed from string)
                 firebaseConfig = JSON.parse(YOUR_FIREBASE_CONFIG_JSON);
+                console.log("Using hardcoded Firebase config (may require manual key input).");
             }
         } catch (e) {
             console.error("CRITICAL: Failed to parse Firebase configuration JSON.", e);
-            renderStatus("Configuration Error: Cannot read Firebase keys. Check console.", true);
+            renderStatus("Configuration Error: Cannot read Firebase keys.", true);
             throw new Error("Configuration Parse Failure");
         }
         
@@ -154,7 +158,7 @@
             const icon = stepElement.querySelector('.loading-icon');
             
             // Reset state
-            stepElement.classList.remove('current', 'success');
+            stepElement.classList.remove('current', 'success', 'text-red-600');
             stepElement.classList.add('loading-step');
             icon.classList.remove('bg-primary-blue', 'bg-gray-300', 'bg-red-500', 'animate-pulse');
 
@@ -163,11 +167,13 @@
                 icon.classList.add('bg-primary-blue', 'animate-pulse');
             } else if (status === 'success') {
                 stepElement.classList.add('success');
-                stepElement.textContent += ' (Done)';
+                stepElement.innerHTML = stepElement.textContent.trim() + ' <span class="text-green-600">(Done)</span>';
+                icon.classList.remove('bg-gray-300');
                 icon.classList.add('bg-green-500');
             } else if (status === 'fail') {
                 stepElement.classList.add('text-red-600');
-                stepElement.textContent += ' (Failed)';
+                stepElement.innerHTML = stepElement.textContent.trim() + ' <span class="text-red-600">(Failed)</span>';
+                icon.classList.remove('bg-gray-300');
                 icon.classList.add('bg-red-500');
             }
         }
@@ -192,12 +198,12 @@
             document.getElementById('modal-container').classList.add('hidden');
         }
 
-        function renderStatus(message, isError = false) {
+        function renderStatus(title, message, isError = false) {
             const statusDiv = document.getElementById('status-message');
             const appContent = document.getElementById('app-content');
             
             // Overwrite the loading steps with the final status message
-            statusDiv.innerHTML = `<div class="p-4"><p class="text-xl font-bold ${isError ? 'text-red-600' : 'text-gray-600'}">${isError ? 'ERROR' : 'STATUS'}</p><p class="mt-2 text-center text-gray-700">${message}</p></div>`;
+            statusDiv.innerHTML = `<div class="p-4"><p class="text-xl font-bold ${isError ? 'text-red-600' : 'text-gray-600'}">${title}</p><p class="mt-2 text-center text-gray-700">${message}</p></div>`;
             
             if (isError) {
                 statusDiv.classList.remove('bg-white');
@@ -386,13 +392,4 @@
                         updateStepStatus('step-3', 'current');
                         
                         // Start listening for data only after successful authentication
-                        if (!initialCheckDone) {
-                            listenForServices();
-                            renderApp();
-                        }
-                    } else if (!initialCheckDone) {
-                        // Attempt silent sign-in if the user is not authenticated yet (first run or token expired)
-                        try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                     
+        
